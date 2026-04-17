@@ -1,0 +1,761 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — Visit {{ visit_id }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .visit-hero {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .visit-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--brand-deep);
+    margin-bottom: 6px;
+  }
+
+  .visit-hero-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .artifacts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .artifact-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .artifact-card.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .artifact-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--surface-3);
+  }
+
+  .artifact-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .artifact-icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+
+  .icon-summary    { background: var(--success-lt); }
+  .icon-followup   { background: var(--warning-lt); }
+  .icon-transcript { background: var(--purple-lt);  }
+  .icon-default    { background: var(--info-lt);    }
+
+  .artifact-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--brand-deep);
+    text-transform: capitalize;
+  }
+
+  .artifact-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .artifact-body {
+    padding: 20px;
+    flex: 1;
+  }
+
+  .artifact-body pre {
+    white-space: pre-wrap;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+
+  .artifact-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--surface-3);
+    display: flex;
+    gap: 8px;
+    background: var(--surface-2);
+  }
+
+  .copy-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    transition: var(--transition);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .copy-btn:hover {
+    background: var(--brand-deep);
+    color: white;
+    border-color: var(--brand-deep);
+  }
+
+  /* Accent bars by type */
+  .artifact-card[data-type="summary"]                { border-top: 3px solid var(--success); }
+  .artifact-card[data-type="followup_message"]       { border-top: 3px solid var(--accent-warm); }
+  .artifact-card[data-type="transcript"]             { border-top: 3px solid var(--purple); }
+  .artifact-card[data-type="soap_note"]              { border-top: 3px solid var(--brand-blue); }
+  .artifact-card[data-type="referral_letter"]        { border-top: 3px solid #7b1fa2; }
+  .artifact-card[data-type="sick_note"]              { border-top: 3px solid #c62828; }
+  .artifact-card[data-type="prescription_summary"]   { border-top: 3px solid #00838f; }
+  .artifact-card[data-type="discharge_instructions"] { border-top: 3px solid #2e7d32; }
+
+  .paperwork-panel {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-top: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .paperwork-panel h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--brand-deep);
+    margin-bottom: 6px;
+  }
+
+  .paperwork-panel .sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  .doc-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .doc-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--surface-2);
+  }
+
+  .doc-checkbox-item:hover { border-color: var(--brand-teal); background: var(--surface); }
+  .doc-checkbox-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--brand-teal); }
+  .doc-checkbox-item .doc-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .doc-checkbox-item .doc-icon  { font-size: 18px; }
+
+  .send-sms-modal {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,37,64,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .send-sms-modal.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 440px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .modal-box h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: var(--brand-deep);
+  }
+
+  .modal-box p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .form-field {
+    margin-bottom: 16px;
+  }
+
+  .form-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+  }
+
+  .form-field input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+  }
+
+  .form-field input:focus {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+  }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+  .edit-area {
+    display: none;
+    width: 100%;
+    padding: 0;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    resize: vertical;
+    min-height: 160px;
+    outline: none;
+    background: transparent;
+  }
+  .edit-area.active { display: block; }
+  .artifact-body.editing pre { display: none; }
+  .artifact-body.editing .edit-area { display: block; }
+  .copy-btn.save-btn { background: var(--brand-teal); color: white; border-color: var(--brand-teal); }
+  .copy-btn.save-btn:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a>
+  <span>›</span>
+  <a href="/visits">Visits</a>
+  <span>›</span>
+  <span>{{ visit_id }}</span>
+</div>
+
+<div class="visit-hero">
+  <div>
+    <h1>Visit: {{ visit_id }}</h1>
+    <p style="color:var(--text-muted);font-size:14px;">
+      {% if patient %}
+        <a href="/patient/{{ patient[0] }}" style="color:var(--brand-teal);text-decoration:none;font-weight:500;">👤 {{ patient[1] }} {{ patient[2] }}</a>
+      {% else %}
+        Patient record and AI-generated artifacts
+      {% endif %}
+    </p>
+    <div class="visit-hero-meta">
+      {% for artifact_type, _, _ in artifacts %}
+        {% if artifact_type == 'summary' %}
+          <span class="badge badge-success">✓ Summary</span>
+        {% elif artifact_type == 'followup_message' %}
+          <span class="badge badge-warning">✓ Follow-up</span>
+        {% elif artifact_type == 'transcript' %}
+          <span class="badge badge-purple">✓ Transcript</span>
+        {% else %}
+          <span class="badge badge-info">✓ {{ artifact_type }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-ghost" onclick="document.getElementById('smsModal').classList.add('open')">
+      📱 Send SMS
+    </button>
+    <button class="btn btn-primary" onclick="window.print()">⎙ Print Record</button>
+    <button class="btn btn-ghost" style="color:#c62828;border-color:#c62828;"
+            onclick="document.getElementById('deleteModal').classList.add('open')">
+      🗑 Delete Visit
+    </button>
+  </div>
+</div>
+
+{% if artifacts %}
+<div class="artifacts-grid">
+  {% for artifact_type, content, created_at in artifacts %}
+
+  {% if artifact_type == 'summary' %}
+  <div class="artifact-card full-width" data-type="summary">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon icon-summary">📋</div>
+        <div>
+          <div class="artifact-title">Clinical Summary</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-success">AI Generated</span>
+    </div>
+    <div class="artifact-body" id="body-summary">
+      <pre id="content-summary">{{ content }}</pre>
+      <textarea class="edit-area" id="edit-summary"></textarea>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-summary',this)">⎘ Copy</button>
+      <button class="copy-btn" onclick="document.getElementById('smsModal').classList.add('open')">📱 Send SMS</button>
+      <button class="copy-btn" onclick="openEmail('summary')">✉ Send Email</button>
+      <button class="copy-btn" id="edit-btn-summary" onclick="startEdit('summary')">✏ Edit</button>
+      <button class="copy-btn save-btn" id="save-btn-summary" style="display:none" onclick="saveEdit('{{ visit_id }}','summary')">✓ Save</button>
+      <button class="copy-btn" id="cancel-btn-summary" style="display:none" onclick="cancelEdit('summary')">✕ Cancel</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'followup_message' %}
+  <div class="artifact-card" data-type="followup_message">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon icon-followup">💬</div>
+        <div>
+          <div class="artifact-title">Follow-up Message</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-warning">Patient-Facing</span>
+    </div>
+    <div class="artifact-body" id="body-followup">
+      <pre id="content-followup">{{ content }}</pre>
+      <textarea class="edit-area" id="edit-followup"></textarea>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-followup',this)">⎘ Copy</button>
+      <button class="copy-btn" onclick="document.getElementById('smsModal').classList.add('open')">📱 Send SMS</button>
+      <button class="copy-btn" onclick="openEmail('followup_message')">✉ Send Email</button>
+      <button class="copy-btn" id="edit-btn-followup_message" onclick="startEdit('followup_message')">✏ Edit</button>
+      <button class="copy-btn save-btn" id="save-btn-followup_message" style="display:none" onclick="saveEdit('{{ visit_id }}','followup_message')">✓ Save</button>
+      <button class="copy-btn" id="cancel-btn-followup_message" style="display:none" onclick="cancelEdit('followup_message')">✕ Cancel</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'transcript' %}
+  <div class="artifact-card" data-type="transcript">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon icon-transcript">🎙</div>
+        <div>
+          <div class="artifact-title">Transcript</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-purple">Raw Recording</span>
+    </div>
+    <div class="artifact-body" style="max-height:320px;overflow-y:auto;">
+      <pre id="content-transcript">{{ content }}</pre>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-transcript',this)">⎘ Copy</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'summary_es' %}
+  <div class="artifact-card full-width" data-type="summary_es" style="border-top:3px solid #e65100;">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon" style="background:#fff3e0;">🌐</div>
+        <div>
+          <div class="artifact-title">Resumen del Paciente (Español)</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge" style="background:#fff3e0;color:#e65100;">Traducción al Español</span>
+    </div>
+    <div class="artifact-body" id="body-summary_es">
+      <pre id="content-summary-es">{{ content }}</pre>
+      <textarea class="edit-area" id="edit-summary_es"></textarea>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-summary-es',this)">⎘ Copy</button>
+      <button class="copy-btn" onclick="setSmsType('summary_es');document.getElementById('smsModal').classList.add('open')">📱 Send to Patient (ES)</button>
+      <button class="copy-btn" id="edit-btn-summary_es" onclick="startEdit('summary_es')">✏ Edit</button>
+      <button class="copy-btn save-btn" id="save-btn-summary_es" style="display:none" onclick="saveEdit('{{ visit_id }}','summary_es')">✓ Save</button>
+      <button class="copy-btn" id="cancel-btn-summary_es" style="display:none" onclick="cancelEdit('summary_es')">✕ Cancel</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'followup_es' %}
+  <div class="artifact-card" data-type="followup_es" style="border-top:3px solid #e65100;">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon" style="background:#fff3e0;">🌐</div>
+        <div>
+          <div class="artifact-title">Mensaje de Seguimiento (Español)</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge" style="background:#fff3e0;color:#e65100;">Paciente — Español</span>
+    </div>
+    <div class="artifact-body" id="body-followup_es">
+      <pre id="content-followup-es">{{ content }}</pre>
+      <textarea class="edit-area" id="edit-followup_es"></textarea>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-followup-es',this)">⎘ Copy</button>
+      <button class="copy-btn" onclick="setSmsType('followup_es');document.getElementById('smsModal').classList.add('open')">📱 Send SMS (ES)</button>
+      <button class="copy-btn" id="edit-btn-followup_es" onclick="startEdit('followup_es')">✏ Edit</button>
+      <button class="copy-btn save-btn" id="save-btn-followup_es" style="display:none" onclick="saveEdit('{{ visit_id }}','followup_es')">✓ Save</button>
+      <button class="copy-btn" id="cancel-btn-followup_es" style="display:none" onclick="cancelEdit('followup_es')">✕ Cancel</button>
+    </div>
+  </div>
+
+  {% elif artifact_type in ('soap_note','referral_letter','sick_note','prescription_summary','discharge_instructions') %}
+  {% set pw_icons = {'soap_note':'🩺','referral_letter':'📬','sick_note':'📋','prescription_summary':'💊','discharge_instructions':'📄'} %}
+  {% set pw_labels = {'soap_note':'SOAP Note','referral_letter':'Referral Letter','sick_note':'Sick / Leave Certificate','prescription_summary':'Prescription Summary','discharge_instructions':'Discharge Instructions'} %}
+  <div class="artifact-card full-width" data-type="{{ artifact_type }}">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon icon-default">{{ pw_icons[artifact_type] }}</div>
+        <div>
+          <div class="artifact-title">{{ pw_labels[artifact_type] }}</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-info">AI Generated</span>
+    </div>
+    <div class="artifact-body" id="body-{{ artifact_type }}">
+      <pre id="content-{{ artifact_type }}">{{ content }}</pre>
+      <textarea class="edit-area" id="edit-{{ artifact_type }}"></textarea>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-{{ artifact_type }}',this)">⎘ Copy</button>
+      <button class="copy-btn" onclick="openEmail('{{ artifact_type }}')">✉ Send Email</button>
+      <button class="copy-btn" onclick="window.print()">⎙ Print</button>
+      <button class="copy-btn" id="edit-btn-{{ artifact_type }}" onclick="startEdit('{{ artifact_type }}')">✏ Edit</button>
+      <button class="copy-btn save-btn" id="save-btn-{{ artifact_type }}" style="display:none" onclick="saveEdit('{{ visit_id }}','{{ artifact_type }}')">✓ Save</button>
+      <button class="copy-btn" id="cancel-btn-{{ artifact_type }}" style="display:none" onclick="cancelEdit('{{ artifact_type }}')">✕ Cancel</button>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="artifact-card" data-type="default">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon icon-default">📄</div>
+        <div>
+          <div class="artifact-title">{{ artifact_type.replace('_',' ') }}</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="artifact-body">
+      <pre>{{ content }}</pre>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endfor %}
+</div>
+
+{% else %}
+<div style="text-align:center;padding:64px;color:var(--text-muted);">
+  <div style="font-size:48px;margin-bottom:16px;">📭</div>
+  <h3 style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:8px;color:var(--text-secondary);">No records found</h3>
+  <p style="font-size:14px;">Run the pipeline for this visit to generate records</p>
+</div>
+{% endif %}
+
+<!-- Paperwork Panel -->
+<div class="paperwork-panel">
+  <h3>Generate Paperwork</h3>
+  <p class="sub">Select the documents you need. They'll be generated by AI from this visit's transcript and appear above when ready (30–60 seconds).</p>
+  <div class="doc-checkboxes">
+    <label class="doc-checkbox-item">
+      <input type="checkbox" name="doc_type" value="soap_note">
+      <span class="doc-icon">🩺</span>
+      <span class="doc-label">SOAP Note</span>
+    </label>
+    <label class="doc-checkbox-item">
+      <input type="checkbox" name="doc_type" value="referral_letter">
+      <span class="doc-icon">📬</span>
+      <span class="doc-label">Referral Letter</span>
+    </label>
+    <label class="doc-checkbox-item">
+      <input type="checkbox" name="doc_type" value="sick_note">
+      <span class="doc-icon">📋</span>
+      <span class="doc-label">Sick / Leave Certificate</span>
+    </label>
+    <label class="doc-checkbox-item">
+      <input type="checkbox" name="doc_type" value="prescription_summary">
+      <span class="doc-icon">💊</span>
+      <span class="doc-label">Prescription Summary</span>
+    </label>
+    <label class="doc-checkbox-item">
+      <input type="checkbox" name="doc_type" value="discharge_instructions">
+      <span class="doc-icon">📄</span>
+      <span class="doc-label">Discharge Instructions</span>
+    </label>
+  </div>
+  <button class="btn btn-primary" onclick="generatePaperwork('{{ visit_id }}')">Generate Selected</button>
+  <span id="paperworkStatus" style="margin-left:14px;font-size:13px;color:var(--text-muted);"></span>
+</div>
+
+<!-- Delete Modal -->
+<div class="send-sms-modal" id="deleteModal">
+  <div class="modal-box">
+    <h3 style="color:#c62828;">Delete Visit</h3>
+    <p>This will permanently delete all records for visit <strong>{{ visit_id }}</strong> including the transcript, summary, clinical notes, and all generated documents. This cannot be undone.</p>
+    <form action="/visit/{{ visit_id }}/delete" method="POST">
+      <div class="modal-actions">
+        <button type="submit" class="btn" style="flex:1;justify-content:center;background:#c62828;color:white;">Delete Permanently</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deleteModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Email Modal -->
+<div class="send-sms-modal" id="emailModal">
+  <div class="modal-box">
+    <h3>Send Email</h3>
+    <p>Send this document to the patient or a colleague via email.</p>
+    <form id="emailForm" action="/send-email/{{ visit_id }}" method="POST">
+      <input type="hidden" name="artifact_type" id="emailArtifactType" value="summary">
+      <div class="form-field">
+        <label>Email address</label>
+        <input type="email" name="email" placeholder="patient@email.com"
+               value="{{ patient[6] if patient and patient[6] else '' }}" required>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Send Email</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('emailModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- SMS Modal -->
+<div class="send-sms-modal" id="smsModal">
+  <div class="modal-box">
+    <h3>Send Patient SMS</h3>
+    <p>Send the patient-friendly summary to the patient via text message using Twilio.</p>
+    <form action="/send-sms/{{ visit_id }}" method="POST">
+      <div class="form-field">
+        <label>Patient phone number</label>
+        <input type="tel" name="phone" placeholder="+15405551234"
+               value="{{ patient[3] if patient and patient[3] else '' }}" required>
+      </div>
+      <div class="form-field">
+        <label>Message type</label>
+        <select id="smsMessageType" name="message_type" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+          <option value="summary">Patient Summary (English)</option>
+          <option value="followup_message">Follow-up Message (English)</option>
+          <option value="summary_es">Resumen del Paciente (Español)</option>
+          <option value="followup_es">Mensaje de Seguimiento (Español)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">📱 Send SMS</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('smsModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyText(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.innerHTML = '⎘ Copy'; }, 2000);
+    showToast('Copied to clipboard');
+  });
+}
+
+function setSmsType(type) {
+  document.getElementById('smsMessageType').value = type;
+}
+
+// Maps artifact_type → the pre element id and body div id
+const CONTENT_IDS = {
+  'summary':                  'content-summary',
+  'followup_message':         'content-followup',
+  'summary_es':               'content-summary-es',
+  'followup_es':              'content-followup-es',
+  'soap_note':                'content-soap_note',
+  'referral_letter':          'content-referral_letter',
+  'sick_note':                'content-sick_note',
+  'prescription_summary':     'content-prescription_summary',
+  'discharge_instructions':   'content-discharge_instructions',
+};
+const BODY_IDS = {
+  'summary':                  'body-summary',
+  'followup_message':         'body-followup',
+  'summary_es':               'body-summary_es',
+  'followup_es':              'body-followup_es',
+  'soap_note':                'body-soap_note',
+  'referral_letter':          'body-referral_letter',
+  'sick_note':                'body-sick_note',
+  'prescription_summary':     'body-prescription_summary',
+  'discharge_instructions':   'body-discharge_instructions',
+};
+
+async function generatePaperwork(visitId) {
+  const checked = [...document.querySelectorAll('input[name="doc_type"]:checked')].map(el => el.value);
+  if (checked.length === 0) {
+    showToast('Select at least one document type.');
+    return;
+  }
+  const status = document.getElementById('paperworkStatus');
+  status.textContent = 'Generating... this takes 30–60 seconds. Refresh the page when ready.';
+
+  try {
+    const resp = await fetch('/api/visit/' + visitId + '/generate-paperwork', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_types: checked })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Paperwork is being generated — refresh in ~60 seconds.');
+    } else {
+      status.textContent = 'Error: ' + (data.error || 'Unknown error');
+    }
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+function startEdit(type) {
+  const pre      = document.getElementById(CONTENT_IDS[type]);
+  const textarea = document.getElementById('edit-' + type);
+  const body     = document.getElementById(BODY_IDS[type]);
+  textarea.value = pre.textContent;
+  body.classList.add('editing');
+  document.getElementById('edit-btn-'   + type).style.display = 'none';
+  document.getElementById('save-btn-'   + type).style.display = 'inline-flex';
+  document.getElementById('cancel-btn-' + type).style.display = 'inline-flex';
+  textarea.focus();
+}
+
+function cancelEdit(type) {
+  document.getElementById(BODY_IDS[type]).classList.remove('editing');
+  document.getElementById('edit-btn-'   + type).style.display = 'inline-flex';
+  document.getElementById('save-btn-'   + type).style.display = 'none';
+  document.getElementById('cancel-btn-' + type).style.display = 'none';
+}
+
+async function saveEdit(visitId, type) {
+  const textarea = document.getElementById('edit-' + type);
+  const saveBtn  = document.getElementById('save-btn-' + type);
+  const original = saveBtn.textContent;
+  saveBtn.textContent = 'Saving...';
+  saveBtn.disabled = true;
+
+  const form = new FormData();
+  form.append('artifact_type', type);
+  form.append('content', textarea.value);
+
+  try {
+    const resp = await fetch('/api/visit/' + visitId + '/update-artifact', { method: 'POST', body: form });
+    const data = await resp.json();
+    if (data.success) {
+      document.getElementById(CONTENT_IDS[type]).textContent = textarea.value;
+      cancelEdit(type);
+      showToast('Saved successfully');
+    } else {
+      showToast('Save failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    showToast('Save failed: ' + e.message);
+  } finally {
+    saveBtn.textContent = original;
+    saveBtn.disabled = false;
+  }
+}
+
+function openEmail(artifactType) {
+  document.getElementById('emailArtifactType').value = artifactType;
+  document.getElementById('emailModal').classList.add('open');
+}
+
+document.getElementById('smsModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+// ── Auto-refresh when pipeline/paperwork is running ────────
+const knownTypes = new Set([
+  {% for artifact_type, _, _ in artifacts %}'{{ artifact_type }}',{% endfor %}
+]);
+
+function checkForNewArtifacts() {
+  fetch('/api/visit/{{ visit_id }}')
+    .then(r => r.json())
+    .then(data => {
+      const incoming = Object.keys(data);
+      const hasNew = incoming.some(t => !knownTypes.has(t));
+      if (hasNew) {
+        showToast('New documents are ready — reloading...');
+        setTimeout(() => location.reload(), 1200);
+      }
+    })
+    .catch(() => {});
+}
+
+// Only poll if we're missing expected artifacts (pipeline or paperwork likely still running)
+const expectedAfterPipeline = ['transcript','summary','followup_message'];
+const missingExpected = expectedAfterPipeline.some(t => !knownTypes.has(t));
+if (missingExpected || knownTypes.size < 3) {
+  const pollInterval = setInterval(() => {
+    checkForNewArtifacts();
+  }, 10000);
+  // Stop polling after 3 minutes
+  setTimeout(() => clearInterval(pollInterval), 180000);
+}
+
+document.getElementById('emailModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+</script>
+{% endblock %}

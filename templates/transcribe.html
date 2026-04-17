@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — Transcribe{% endblock %}
+
+{% block extra_head %}
+<style>
+  .transcribe-hero {
+    background: linear-gradient(135deg, var(--brand-deep), var(--purple));
+    border-radius: var(--radius-xl);
+    padding: 40px 48px;
+    color: white;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .transcribe-hero::after {
+    content: '🎙';
+    position: absolute;
+    right: 48px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 96px;
+    opacity: 0.12;
+  }
+
+  .transcribe-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .transcribe-hero p {
+    opacity: 0.78;
+    font-size: 15px;
+    max-width: 480px;
+  }
+
+  .upload-panel {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 36px;
+    box-shadow: var(--shadow-sm);
+    max-width: 640px;
+  }
+
+  .upload-panel h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+
+  .upload-panel .sub {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  .form-field { margin-bottom: 20px; }
+
+  .form-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .form-field input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+  }
+
+  .form-field input[type="text"]:focus {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--surface-2);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--brand-teal);
+    background: var(--brand-cyan);
+  }
+
+  .drop-zone .icon { font-size: 36px; margin-bottom: 10px; }
+
+  .drop-zone .label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .drop-zone .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .drop-zone input[type="file"] {
+    display: none;
+  }
+
+  .file-chosen {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--success-lt);
+    border: 1px solid #c8e6c9;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--success);
+    margin-top: 10px;
+  }
+
+  .big-btn {
+    background: linear-gradient(135deg, var(--purple), var(--brand-blue));
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 14px 36px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 4px 20px rgba(106,27,154,0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .big-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(106,27,154,0.4);
+  }
+
+  .big-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .log-box {
+    background: var(--brand-deep);
+    color: #a8e8d0;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    border-radius: var(--radius-md);
+    padding: 20px;
+    min-height: 120px;
+    line-height: 1.7;
+    margin-top: 24px;
+    display: none;
+    overflow-y: auto;
+    max-height: 280px;
+  }
+
+  .log-box.visible { display: block; }
+  .log-line { margin-bottom: 2px; }
+  .log-line.success { color: #69f0ae; }
+  .log-line.error   { color: #ff5252; }
+  .log-line.info    { color: #82b1ff; }
+
+  .hint-box {
+    background: var(--info-lt);
+    border: 1px solid #bbdefb;
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    font-size: 13px;
+    color: var(--info);
+    margin-top: 24px;
+    line-height: 1.65;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-3);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+
+  .tab-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: calc(var(--radius-sm) - 2px);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: var(--transition);
+  }
+
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .record-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 40px 24px;
+    text-align: center;
+    background: var(--surface-2);
+    transition: var(--transition);
+  }
+
+  .record-area.recording {
+    border-color: #e53935;
+    background: #fff5f5;
+  }
+
+  .record-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #e53935, #b71c1c);
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(229,57,53,0.4);
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .record-btn:hover { transform: scale(1.05); }
+  .record-btn.recording { animation: pulse 1.2s ease-in-out infinite; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 20px rgba(229,57,53,0.4); }
+    50%       { box-shadow: 0 4px 32px rgba(229,57,53,0.8); }
+  }
+
+  .record-timer {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--brand-deep);
+    margin-bottom: 6px;
+  }
+
+  .record-status {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .record-status.live { color: #e53935; font-weight: 600; }
+
+  #recordingReady {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--success-lt);
+    border: 1px solid #c8e6c9;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--success);
+    margin-top: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a>
+  <span>›</span>
+  <span>Transcribe</span>
+</div>
+
+<div class="transcribe-hero">
+  <h1>Transcribe Audio</h1>
+  <p>Upload a .wav recording of a patient visit. IBM Watson STT will transcribe it and save it to the database, ready for the AI pipeline.</p>
+</div>
+
+<div class="upload-panel">
+  <h2>Upload or Record</h2>
+  <p class="sub">Record live from your microphone or upload a saved audio file. Leave the visit ID blank to auto-generate one.</p>
+
+  <div id="patientBanner" style="display:none;align-items:center;gap:10px;background:var(--success-lt);border:1px solid #c8e6c9;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;font-size:14px;color:var(--success);">
+    <span>👤</span>
+    <span>Recording for <strong id="patientBannerName"></strong> — visit will be automatically linked to their profile.</span>
+  </div>
+
+  <div class="form-field">
+    <label>Visit ID <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional — auto-generated if blank)</span></label>
+    <input type="text" id="visitId" placeholder="e.g. V_20260407_143000">
+  </div>
+
+  <div class="form-field">
+    <label>Audio Language</label>
+    <select id="audioLanguage" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text-primary);outline:none;background:var(--surface);">
+      <option value="en">English</option>
+      <option value="es">Spanish (Español) — will be translated to English</option>
+    </select>
+  </div>
+
+  <div class="form-field">
+    <label>Recording Environment</label>
+    <select id="audioEnvironment" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text-primary);outline:none;background:var(--surface);">
+      <option value="office">Doctor's Office / Exam Room — quiet, private</option>
+      <option value="clinic" selected>Clinic / Shared Space — moderate background noise</option>
+      <option value="er">Emergency Room / Urgent Care — loud, alarms, multiple voices</option>
+      <option value="ambulance">Ambulance / Field — sirens, wind, very loud</option>
+    </select>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:5px;line-height:1.5;">
+      Adjusts Watson STT noise suppression to match your environment for better accuracy.
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('record', this)">🎙 Record Live</button>
+    <button class="tab-btn" onclick="switchTab('upload', this)">📁 Upload File</button>
+  </div>
+
+  <!-- RECORD TAB -->
+  <div class="tab-panel active" id="tab-record">
+    <div class="record-area" id="recordArea">
+      <button class="record-btn" id="recordBtn" onclick="toggleRecord()">●</button>
+      <div class="record-timer" id="recordTimer">0:00</div>
+      <div class="record-status" id="recordStatus">Press to start recording</div>
+    </div>
+    <div id="recordingReady">
+      <span>✓</span>
+      <span id="recordingDuration"></span>
+      <span>— ready to transcribe</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD TAB -->
+  <div class="tab-panel" id="tab-upload">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('audioFile').click()">
+      <div class="icon">📁</div>
+      <div class="label">Click to choose a file or drag and drop</div>
+      <div class="hint">Supported formats: .wav, .webm, .ogg, .mp3, .flac</div>
+      <input type="file" id="audioFile" accept=".wav,.webm,.ogg,.mp3,.flac,audio/*" onchange="onFileChosen(this)">
+    </div>
+    <div class="file-chosen" id="fileChosen">
+      <span>✓</span>
+      <span id="fileName"></span>
+    </div>
+  </div>
+
+  <button class="big-btn" id="transcribeBtn" onclick="runTranscribe()" disabled style="margin-top:20px;">
+    🎙 Transcribe Audio
+  </button>
+
+  <div class="log-box" id="logBox"></div>
+</div>
+
+<div class="hint-box">
+  The AI pipeline runs automatically after transcription — patient summary, clinical notes, and follow-up message will be ready on the visit page within 30–60 seconds.
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Patient context from URL params ───────────────────────
+const urlParams = new URLSearchParams(window.location.search);
+const ctxPatientId = urlParams.get('patient_id') || '';
+const ctxPatientName = urlParams.get('name') || '';
+const ctxLanguage = urlParams.get('language') || '';
+
+if (ctxPatientId) {
+  const banner = document.getElementById('patientBanner');
+  document.getElementById('patientBannerName').textContent = ctxPatientName;
+  banner.style.display = 'flex';
+}
+if (ctxLanguage) {
+  document.getElementById('audioLanguage').value = ctxLanguage;
+}
+
+// ── Tab switching ──────────────────────────────────────────
+let activeTab = 'record';
+function switchTab(name, btn) {
+  activeTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('transcribeBtn').disabled = (name === 'upload' && !uploadBlob);
+  if (name === 'record') {
+    document.getElementById('transcribeBtn').disabled = !recordedBlob;
+  }
+}
+
+// ── File upload ────────────────────────────────────────────
+let uploadBlob = null;
+
+function onFileChosen(input) {
+  if (input.files.length > 0) {
+    uploadBlob = input.files[0];
+    document.getElementById('fileName').textContent = uploadBlob.name;
+    document.getElementById('fileChosen').style.display = 'flex';
+    document.getElementById('transcribeBtn').disabled = false;
+  }
+}
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    document.getElementById('audioFile').files = e.dataTransfer.files;
+    onFileChosen(document.getElementById('audioFile'));
+  }
+});
+
+// ── Microphone recording ───────────────────────────────────
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordedBlob = null;
+let timerInterval = null;
+let startTime = null;
+
+async function toggleRecord() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    recordedBlob = null;
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : 'audio/webm';
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(recordedChunks, { type: mimeType });
+      const dur = formatTime(Math.floor((Date.now() - startTime) / 1000));
+      document.getElementById('recordingDuration').textContent = dur + ' recorded';
+      document.getElementById('recordingReady').style.display = 'flex';
+      document.getElementById('transcribeBtn').disabled = false;
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start(250);
+    startTime = Date.now();
+
+    document.getElementById('recordBtn').textContent = '■';
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordArea').classList.add('recording');
+    document.getElementById('recordStatus').textContent = 'Recording...';
+    document.getElementById('recordStatus').className = 'record-status live';
+    document.getElementById('recordingReady').style.display = 'none';
+    document.getElementById('transcribeBtn').disabled = true;
+
+    timerInterval = setInterval(() => {
+      const secs = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById('recordTimer').textContent = formatTime(secs);
+    }, 500);
+
+  } catch(e) {
+    alert('Microphone access denied or unavailable: ' + e.message);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder) mediaRecorder.stop();
+  clearInterval(timerInterval);
+  document.getElementById('recordBtn').textContent = '●';
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordArea').classList.remove('recording');
+  document.getElementById('recordStatus').textContent = 'Press to start recording';
+  document.getElementById('recordStatus').className = 'record-status';
+}
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+// ── Transcribe ─────────────────────────────────────────────
+function log(msg, type='') {
+  const box = document.getElementById('logBox');
+  box.classList.add('visible');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '> ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function runTranscribe() {
+  const btn = document.getElementById('transcribeBtn');
+  const blob = activeTab === 'record' ? recordedBlob : uploadBlob;
+  if (!blob) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-color:rgba(255,255,255,0.3);border-top-color:white;"></div> Transcribing...';
+
+  document.getElementById('logBox').innerHTML = '';
+  document.getElementById('logBox').classList.add('visible');
+  log('Connecting to IBM Watson STT...', 'info');
+
+  const formData = new FormData();
+  const ext = activeTab === 'record' ? '.webm' : (uploadBlob.name.match(/\.\w+$/) || ['.wav'])[0];
+  formData.append('audio', blob, 'recording' + ext);
+  formData.append('visit_id', document.getElementById('visitId').value.trim());
+  formData.append('language', document.getElementById('audioLanguage').value);
+  formData.append('environment', document.getElementById('audioEnvironment').value);
+  if (ctxPatientId) formData.append('patient_id', ctxPatientId);
+
+  try {
+    log('Uploading and transcribing audio...');
+    const resp = await fetch('/api/transcribe', { method: 'POST', body: formData });
+    const data = await resp.json();
+
+    if (data.success) {
+      log('✓ Transcription complete!', 'success');
+      log('✓ Visit ID: ' + data.visit_id, 'success');
+      log('✓ Saved to database', 'success');
+      log('⚡ AI pipeline running in background (summary, notes, follow-up)...', 'info');
+      if (data.preview) log('Preview: ' + data.preview, 'info');
+      showToast('Transcript saved! AI pipeline is running...');
+      setTimeout(() => { window.location.href = '/visit/' + data.visit_id; }, 2500);
+    } else {
+      log('✗ Error: ' + (data.error || 'Unknown error'), 'error');
+      btn.disabled = false;
+      btn.innerHTML = '🎙 Transcribe Audio';
+    }
+  } catch(e) {
+    log('✗ Connection error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '🎙 Transcribe Audio';
+  }
+}
+</script>
+{% endblock %}

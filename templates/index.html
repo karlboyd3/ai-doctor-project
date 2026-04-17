@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}IntelliCare{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-deep:    #0a2540;
+      --brand-navy:    #0e3460;
+      --brand-blue:    #1565c0;
+      --brand-teal:    #00838f;
+      --brand-teal-lt: #00acc1;
+      --brand-cyan:    #e0f7fa;
+      --accent:        #00bcd4;
+      --accent-warm:   #ff7043;
+      --surface:       #ffffff;
+      --surface-2:     #f4f8fb;
+      --surface-3:     #e8f1f8;
+      --border:        #d0dce8;
+      --text-primary:  #0a2540;
+      --text-secondary:#4a6080;
+      --text-muted:    #8aa0b8;
+      --success:       #2e7d32;
+      --success-lt:    #e8f5e9;
+      --warning:       #e65100;
+      --warning-lt:    #fff3e0;
+      --info:          #1565c0;
+      --info-lt:       #e3f2fd;
+      --purple:        #6a1b9a;
+      --purple-lt:     #f3e5f5;
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     18px;
+      --radius-xl:     28px;
+      --shadow-sm:     0 1px 4px rgba(10,37,64,0.08);
+      --shadow-md:     0 4px 20px rgba(10,37,64,0.10);
+      --shadow-lg:     0 12px 40px rgba(10,37,64,0.14);
+      --transition:    all 0.22s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--surface-2);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      background: var(--brand-deep);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.25);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--brand-teal-lt), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 18px;
+      color: white;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+    }
+
+    .nav-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: white;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-name span {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.72);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: white;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .nav-badge {
+      background: var(--accent);
+      color: var(--brand-deep);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-left: 4px;
+    }
+
+    .nav-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.2);
+      transition: var(--transition);
+    }
+
+    .nav-avatar:hover { border-color: var(--accent); }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      flex: 1;
+      padding: 36px 40px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      margin-bottom: 32px;
+    }
+
+    .page-header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px;
+      color: var(--brand-deep);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .page-header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-top: 6px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .breadcrumb a {
+      color: var(--brand-teal);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .breadcrumb a:hover { color: var(--brand-blue); }
+
+    .breadcrumb span { opacity: 0.5; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+
+    .card:hover { box-shadow: var(--shadow-md); }
+
+    /* ── STAT PILLS ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px;
+      color: var(--brand-deep);
+      line-height: 1;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-success  { background: var(--success-lt); color: var(--success); }
+    .badge-warning  { background: var(--warning-lt); color: var(--warning); }
+    .badge-info     { background: var(--info-lt);    color: var(--info);    }
+    .badge-purple   { background: var(--purple-lt);  color: var(--purple);  }
+    .badge-teal     { background: var(--brand-cyan); color: var(--brand-teal); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+      color: white;
+      box-shadow: 0 2px 12px rgba(21,101,192,0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 4px 20px rgba(21,101,192,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: var(--surface-3);
+      color: var(--text-primary);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--brand-deep);
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      padding: 20px 40px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    footer strong { color: var(--accent); }
+
+    footer .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    footer a {
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      font-size: 12px;
+      transition: var(--transition);
+    }
+
+    footer a:hover { color: var(--accent); }
+
+    /* ── TOAST ── */
+    #toast-container {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--brand-deep);
+      color: white;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+      border-left: 4px solid var(--accent);
+      min-width: 280px;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* ── SEARCH BAR ── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      gap: 10px;
+      transition: var(--transition);
+    }
+
+    .search-bar:focus-within {
+      border-color: var(--brand-teal);
+      box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+    }
+
+    .search-bar input {
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: transparent;
+      flex: 1;
+    }
+
+    .search-bar input::placeholder { color: var(--text-muted); }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--brand-teal);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── UTILITY ── */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .mt-1 { margin-top: 4px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mb-3 { margin-bottom: 12px; }
+    .text-sm { font-size: 13px; }
+    .text-muted { color: var(--text-muted); }
+    .font-serif { font-family: 'DM Serif Display', serif; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      main { padding: 24px 20px; }
+      .nav-links { display: none; }
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-brand">
+      <div class="nav-logo">I</div>
+      <span class="nav-name">Intelli<span>Care</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+      <a href="/visits">Visits</a>
+      <a href="/patients">Patients</a>
+      <a href="/pipeline">Run Pipeline <span class="nav-badge">AI</span></a>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="nav-avatar" title="Dr. User">Dr</div>
+    </div>
+  </nav>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+        <div style="background:var(--success-lt);color:var(--success);border:1px solid #c8e6c9;
+                    padding:12px 18px;border-radius:var(--radius-md);margin-bottom:20px;
+                    font-size:14px;display:flex;align-items:center;gap:8px;">
+          ✓ {{ message }}
+        </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+
+    <div class="page-header">
+      <h1 style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--brand-deep);">Dashboard</h1>
+      <p style="color:var(--text-secondary);font-size:15px;margin-top:6px;">IntelliCare — AI-Powered Clinical Assistant</p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Visits</div>
+        <div class="stat-value">{{ visit_count }}</div>
+        <div class="stat-sub">unique visit IDs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Summaries</div>
+        <div class="stat-value">{{ summary_count }}</div>
+        <div class="stat-sub">AI-generated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Follow-ups</div>
+        <div class="stat-value">{{ followup_count }}</div>
+        <div class="stat-sub">messages ready</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Transcripts</div>
+        <div class="stat-value">{{ transcript_count }}</div>
+        <div class="stat-sub">recordings processed</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;">
+      <a href="/transcribe" class="btn btn-primary">🎙 New Recording</a>
+      <a href="/pipeline" class="btn btn-ghost">⚡ Run Pipeline</a>
+      <a href="/visits" class="btn btn-ghost">📋 View All Visits</a>
+    </div>
+
+    {% if recent_visits %}
+    <div class="card" style="padding:24px 28px;">
+      <div style="font-weight:600;font-size:15px;margin-bottom:16px;color:var(--brand-deep);">Recent Visits</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for vid, patient_name in recent_visits %}
+        <a href="/visit/{{ vid }}" style="display:flex;align-items:center;justify-content:space-between;
+           padding:12px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);
+           text-decoration:none;color:var(--text-primary);transition:var(--transition);"
+           onmouseover="this.style.background='var(--surface-3)'"
+           onmouseout="this.style.background=''">
+          <div>
+            <div style="font-weight:500;">{% if patient_name %}{{ patient_name }}{% else %}{{ vid }}{% endif %}</div>
+            {% if patient_name %}<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">{{ vid }}</div>{% endif %}
+          </div>
+          <span style="color:var(--text-muted);font-size:18px;">›</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer>
+    <div>© 2026 <strong>IntelliCare</strong> — AI-Powered Clinical Assistant</div>
+    <div class="footer-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">HIPAA Compliance</a>
+      <a href="#">Support</a>
+      <a href="#">Documentation</a>
+    </div>
+  </footer>
+
+  <div id="toast-container"></div>
+
+  <script>
+    function showToast(msg, duration = 3500) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>✓</span> ${msg}`;
+      document.getElementById('toast-container').appendChild(t);
+      setTimeout(() => t.remove(), duration);
+    }
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — Run Pipeline{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pipeline-hero {
+    background: linear-gradient(135deg, var(--brand-deep), var(--brand-teal));
+    border-radius: var(--radius-xl);
+    padding: 40px 48px;
+    color: white;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pipeline-hero::after {
+    content: '⚡';
+    position: absolute;
+    right: 48px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 96px;
+    opacity: 0.1;
+  }
+
+  .pipeline-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .pipeline-hero p {
+    opacity: 0.78;
+    font-size: 15px;
+    max-width: 480px;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .step-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    transition: var(--transition);
+  }
+
+  .step-card.active {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+  }
+
+  .step-card.done {
+    border-color: var(--success);
+    background: var(--success-lt);
+  }
+
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin: 0 auto 12px;
+    transition: var(--transition);
+  }
+
+  .step-card.active .step-num {
+    background: var(--brand-teal);
+    border-color: var(--brand-teal);
+    color: white;
+  }
+
+  .step-card.done .step-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+
+  .step-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .step-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .run-panel {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .run-panel h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+
+  .run-panel p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .log-box {
+    background: var(--brand-deep);
+    color: #a8e8d0;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    border-radius: var(--radius-md);
+    padding: 20px;
+    min-height: 180px;
+    line-height: 1.7;
+    margin-top: 20px;
+    display: none;
+    overflow-y: auto;
+    max-height: 300px;
+  }
+
+  .log-box.visible { display: block; }
+  .log-line { margin-bottom: 2px; }
+  .log-line.success { color: #69f0ae; }
+  .log-line.error   { color: #ff5252; }
+  .log-line.info    { color: #82b1ff; }
+  .log-line.dim     { color: #546e7a; }
+
+  .big-run-btn {
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 16px 40px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 4px 20px rgba(21,101,192,0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .big-run-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(21,101,192,0.4);
+  }
+
+  .big-run-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="/">Dashboard</a>
+    <span>›</span>
+    <span>Run Pipeline</span>
+  </div>
+</div>
+
+<div class="pipeline-hero">
+  <h1>AI Pipeline</h1>
+  <p>Run the full IntelliCare agent pipeline — transcribe, summarize, and generate follow-up messages automatically.</p>
+</div>
+
+<div class="steps-grid">
+  <div class="step-card" id="step1">
+    <div class="step-num">1</div>
+    <div class="step-name">Fetch Transcript</div>
+    <div class="step-desc">Pull visit from database</div>
+  </div>
+  <div class="step-card" id="step2">
+    <div class="step-num">2</div>
+    <div class="step-name">Patient Summary</div>
+    <div class="step-desc">Plain language recap</div>
+  </div>
+  <div class="step-card" id="step3">
+    <div class="step-num">3</div>
+    <div class="step-name">Clinical Notes</div>
+    <div class="step-desc">Structured clinical record</div>
+  </div>
+  <div class="step-card" id="step4">
+    <div class="step-num">4</div>
+    <div class="step-name">Follow-up</div>
+    <div class="step-desc">Post-visit message</div>
+  </div>
+</div>
+
+<div class="run-panel">
+  <h2>Run the Pipeline</h2>
+  <p>Enter a Visit ID to process a specific visit, or leave blank to process the most recent transcript. The process takes 20–40 seconds.</p>
+
+  <div style="margin-bottom:20px;">
+    <label for="visitIdInput" style="display:block;font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">Visit <span style="font-weight:400;opacity:0.7;">(optional — leave blank for latest)</span></label>
+    <select id="visitIdInput"
+      style="width:100%;max-width:400px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);font-family:'DM Sans',sans-serif;font-size:14px;background:var(--surface-2);color:var(--text-primary);outline:none;">
+      <option value="">-- Latest transcript --</option>
+    </select>
+  </div>
+
+  <button class="big-run-btn" id="runBtn" onclick="runPipeline()">
+    ▶ Run Full Pipeline
+  </button>
+
+  <div class="log-box" id="logBox"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load visits into dropdown
+fetch('/api/visits/list')
+  .then(r => r.json())
+  .then(visits => {
+    const sel = document.getElementById('visitIdInput');
+    visits.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.visit_id;
+      opt.textContent = v.patient_name ? `${v.patient_name} — ${v.visit_id}` : v.visit_id;
+      sel.appendChild(opt);
+    });
+  })
+  .catch(() => {});
+
+const steps = ['step1','step2','step3','step4'];
+
+function setStep(n) {
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  });
+}
+
+function log(msg, type='') {
+  const box = document.getElementById('logBox');
+  box.classList.add('visible');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '> ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function runPipeline() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:white;border-color:rgba(255,255,255,0.3);border-top-color:white;"></div> Running...';
+
+  document.getElementById('logBox').innerHTML = '';
+  document.getElementById('logBox').classList.add('visible');
+
+  log('Starting IntelliCare pipeline...', 'info');
+
+  setStep(0);
+  const visitId = document.getElementById('visitIdInput').value.trim();
+  log(visitId ? `Step 1: Fetching transcript for visit ${visitId}...` : 'Step 1: Fetching latest transcript from watsonx.data...');
+  await sleep(600);
+
+  setStep(1);
+  log('Step 2: Running Patient Summary Agent (Granite)...');
+  await sleep(400);
+
+  setStep(2);
+  log('Step 3: Running Clinical Notes Agent (Granite)...');
+  await sleep(400);
+
+  setStep(3);
+  log('Step 4: Generating follow-up message...');
+
+  try {
+    const resp = await fetch('/api/run-pipeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: visitId })
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      steps.forEach(id => {
+        document.getElementById(id).classList.remove('active');
+        document.getElementById(id).classList.add('done');
+      });
+      log('✓ All agents completed successfully', 'success');
+      log(`✓ Visit ID: ${data.visit_id}`, 'success');
+      log('✓ Saved to database', 'success');
+      showToast('Pipeline complete! View results in Visits.');
+      setTimeout(() => { window.location.href = '/visit/' + data.visit_id; }, 2000);
+    } else {
+      log('✗ Error: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch(e) {
+    log('✗ Connection error: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ Run Full Pipeline';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+{% endblock %}

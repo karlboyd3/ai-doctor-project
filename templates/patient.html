@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — {{ (patient[1]~' '~patient[2]) if patient else 'Patient' }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .profile-hero {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .profile-left { display: flex; align-items: center; gap: 20px; }
+
+  .profile-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+
+  .profile-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--brand-deep);
+    margin-bottom: 4px;
+  }
+
+  .profile-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .profile-meta span { display: flex; align-items: center; gap: 5px; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+
+  .info-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 22px 24px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .info-card h4 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .info-card p {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.65;
+  }
+
+  .info-card.alert { border-left: 4px solid var(--warning); }
+  .info-card.meds  { border-left: 4px solid var(--info); }
+
+  .visits-section {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+  }
+
+  .visits-section-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .visits-section-header h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--brand-deep);
+  }
+
+  .visit-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--surface-3);
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+  }
+
+  .visit-row:last-child { border-bottom: none; }
+  .visit-row:hover { background: var(--surface-2); }
+  .visit-row:hover .visit-row-id { color: var(--brand-teal); }
+
+  .visit-row-id { font-weight: 600; font-size: 14px; color: var(--brand-deep); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,37,64,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    max-width: 520px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-box h3 { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 6px; color: var(--brand-deep); }
+  .modal-box .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid .full { grid-column: 1 / -1; }
+
+  .form-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .form-field input, .form-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+    background: var(--surface);
+  }
+
+  .form-field input:focus, .form-field textarea:focus {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+  }
+
+  .form-field textarea { resize: vertical; min-height: 72px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not patient %}
+<div style="text-align:center;padding:80px 40px;">
+  <h3 style="font-family:'DM Serif Display',serif;font-size:24px;color:var(--text-secondary);">Patient not found</h3>
+  <a href="/patients" class="btn btn-primary" style="margin-top:20px;">← Back to Patients</a>
+</div>
+{% else %}
+
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span>
+  <a href="/patients">Patients</a> <span>›</span>
+  <span>{{ patient[1] }} {{ patient[2] }}</span>
+</div>
+
+<div class="profile-hero">
+  <div class="profile-left">
+    {# p: 0=patient_id, 1=first_name, 2=last_name, 3=dob, 4=sex, 5=phone, 6=email, 7=address, 8=pin, 9=allergies, 10=current_medications, 11=notes, 12=preferred_language #}
+    <div class="profile-avatar">{{ patient[1][0].upper() if patient[1] else '?' }}</div>
+    <div>
+      <div class="profile-name">{{ patient[1] }} {{ patient[2] }}</div>
+      <div class="profile-meta">
+        {% if patient[3] %}<span>🎂 {{ patient[3] }}</span>{% endif %}
+        {% if patient[4] %}<span>⚧ {{ patient[4] }}</span>{% endif %}
+        {% if patient[5] %}<span>📱 {{ patient[5] }}</span>{% endif %}
+        {% if patient[6] %}<span>✉ {{ patient[6] }}</span>{% endif %}
+        {% if patient[8] %}
+        <span style="background:var(--info-lt);color:var(--info);padding:2px 10px;border-radius:20px;font-weight:600;font-size:13px;letter-spacing:2px;">PIN: {{ patient[8] }}</span>
+        {% endif %}
+        {% if patient[12] == 'es' %}
+        <span style="background:#fff3e0;color:#e65100;padding:2px 10px;border-radius:20px;font-weight:600;font-size:12px;">🌐 Español</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="/transcribe?patient_id={{ patient[0] }}&name={{ (patient[1]~' '~patient[2])|urlencode }}&language={{ patient[12] or '' }}" class="btn btn-primary">🎙 Start Visit Recording</a>
+    <button class="btn btn-ghost" onclick="document.getElementById('editModal').classList.add('open')">✏ Edit</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('linkModal').classList.add('open')">🔗 Link Visit</button>
+    <button class="btn btn-ghost" style="color:var(--error,#c62828);border-color:var(--error,#c62828);" onclick="document.getElementById('deleteModal').classList.add('open')">🗑 Delete</button>
+  </div>
+</div>
+
+<div class="info-grid">
+  {% if patient[7] %}
+  <div class="info-card" style="grid-column:1/-1;">
+    <h4>📍 Address</h4>
+    <p>{{ patient[7] }}</p>
+  </div>
+  {% endif %}
+  <div class="info-card alert">
+    <h4>⚠ Allergies</h4>
+    <p>{{ patient[9] or 'None recorded' }}</p>
+  </div>
+  <div class="info-card meds">
+    <h4>💊 Current Medications</h4>
+    <p>{{ patient[10] or 'None recorded' }}</p>
+  </div>
+  {% if patient[11] %}
+  <div class="info-card" style="grid-column:1/-1;">
+    <h4>📝 Notes</h4>
+    <p>{{ patient[11] }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="visits-section">
+  <div class="visits-section-header">
+    <h3>Visit History</h3>
+    <span class="badge badge-info">{{ visit_ids|length }} visit{% if visit_ids|length != 1 %}s{% endif %}</span>
+  </div>
+  {% if visit_ids %}
+    {% for vid in visit_ids %}
+    <a href="/visit/{{ vid }}" class="visit-row">
+      <span class="visit-row-id">{{ vid }}</span>
+      <span style="color:var(--text-muted);font-size:18px;">›</span>
+    </a>
+    {% endfor %}
+  {% else %}
+  <div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">
+    No visits linked yet. Use the <strong>Link Visit</strong> button to connect a visit.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3>Edit Patient</h3>
+    <p class="sub">Update {{ patient[1] }} {{ patient[2] }}'s information.</p>
+    <form action="/patient/{{ patient[0] }}/edit" method="POST">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>First Name</label>
+          <input type="text" name="first_name" value="{{ patient[1] or '' }}" required>
+        </div>
+        <div class="form-field">
+          <label>Last Name</label>
+          <input type="text" name="last_name" value="{{ patient[2] or '' }}" required>
+        </div>
+        <div class="form-field">
+          <label>Date of Birth</label>
+          <input type="text" name="dob" value="{{ patient[3] or '' }}" placeholder="MM/DD/YYYY">
+        </div>
+        <div class="form-field">
+          <label>Sex</label>
+          <input type="text" name="sex" value="{{ patient[4] or '' }}" placeholder="M / F / Other">
+        </div>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" name="phone" value="{{ patient[5] or '' }}" placeholder="+15405551234">
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" name="email" value="{{ patient[6] or '' }}">
+        </div>
+        <div class="form-field full">
+          <label>Address</label>
+          <input type="text" name="address" value="{{ patient[7] or '' }}">
+        </div>
+        <div class="form-field full">
+          <label>Allergies</label>
+          <input type="text" name="allergies" value="{{ patient[9] or '' }}">
+        </div>
+        <div class="form-field full">
+          <label>Current Medications</label>
+          <input type="text" name="current_medications" value="{{ patient[10] or '' }}">
+        </div>
+        <div class="form-field full">
+          <label>Notes</label>
+          <textarea name="notes">{{ patient[11] or '' }}</textarea>
+        </div>
+        <div class="form-field full">
+          <label>Preferred Language</label>
+          <select name="preferred_language" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+            <option value="">English (default)</option>
+            <option value="es" {% if patient[12] == 'es' %}selected{% endif %}>Spanish (Español)</option>
+          </select>
+        </div>
+        <div class="full" style="display:flex;align-items:center;gap:8px;padding:10px 0;">
+          <input type="checkbox" name="regen_pin" value="1" id="regenPin" style="width:auto;">
+          <label for="regenPin" style="text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;">
+            Generate a new portal PIN for this patient
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Save Changes</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box">
+    <h3 style="color:var(--error,#c62828);">Delete Patient</h3>
+    <p class="sub">This will permanently remove <strong>{{ patient[1] }} {{ patient[2] }}</strong> from the system. Their linked visit records will be kept. This cannot be undone.</p>
+    <form action="/patient/{{ patient[0] }}/delete" method="POST">
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;background:var(--error,#c62828);border-color:var(--error,#c62828);">Delete Patient</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deleteModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Link Visit Modal -->
+<div class="modal-overlay" id="linkModal">
+  <div class="modal-box">
+    <h3>Link a Visit</h3>
+    <p class="sub">Enter a visit ID to add it to {{ patient[1] }}'s history.</p>
+    <form action="/patient/{{ patient[0] }}/link-visit" method="POST">
+      <div class="form-field">
+        <label>Visit ID</label>
+        <input type="text" name="visit_id" placeholder="e.g. V003" required>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Link Visit</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('linkModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — Patients{% endblock %}
+
+{% block extra_head %}
+<style>
+  .patients-hero {
+    background: linear-gradient(135deg, var(--brand-deep), var(--brand-blue));
+    border-radius: var(--radius-xl);
+    padding: 36px 48px;
+    color: white;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .patients-hero h1 { font-family: 'DM Serif Display', serif; font-size: 30px; margin-bottom: 6px; }
+  .patients-hero p  { opacity: 0.75; font-size: 14px; }
+
+  .patient-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
+  }
+
+  .patient-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 22px 24px;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .patient-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--brand-teal);
+  }
+
+  .patient-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+  }
+
+  .patient-name { font-weight: 600; font-size: 16px; color: var(--brand-deep); margin-bottom: 4px; }
+  .patient-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+
+  .patient-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,37,64,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    max-width: 520px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-box h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    margin-bottom: 6px;
+    color: var(--brand-deep);
+  }
+
+  .modal-box .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid .full { grid-column: 1 / -1; }
+
+  .form-field { margin-bottom: 0; }
+
+  .form-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .form-field input, .form-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+    background: var(--surface);
+  }
+
+  .form-field input:focus, .form-field textarea:focus {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+  }
+
+  .form-field textarea { resize: vertical; min-height: 72px; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 40px;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    border: 2px dashed var(--border);
+  }
+
+  .empty-state h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+  }
+
+  .empty-state p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span> <span>Patients</span>
+</div>
+
+<div class="patients-hero">
+  <div>
+    <h1>Patient Profiles</h1>
+    <p>Persistent patient history, allergies, and medications</p>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('open')"
+          style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);backdrop-filter:blur(4px);">
+    + Add Patient
+  </button>
+</div>
+
+{% if patients %}
+<div class="patient-grid">
+  {% for p in patients %}
+  {# p: patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes #}
+  <a href="/patient/{{ p[0] }}" class="patient-card">
+    <div class="patient-avatar">{{ p[1][0].upper() if p[1] else '?' }}</div>
+    <div class="patient-name">{{ p[1] or '' }} {{ p[2] or '' }}</div>
+    <div class="patient-meta">
+      {% if p[3] %}DOB: {{ p[3] }} &nbsp;·&nbsp;{% endif %}
+      {% if p[5] %}📱 {{ p[5] }}{% endif %}
+    </div>
+    <div class="patient-tags">
+      {% if p[9] %}<span class="badge badge-warning">⚠ Allergies</span>{% endif %}
+      {% if p[10] %}<span class="badge badge-info">💊 Medications</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div style="font-size:52px;margin-bottom:18px;">👤</div>
+  <h3>No patients yet</h3>
+  <p>Add your first patient profile to link visits and auto-fill contact info.</p>
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('open')">+ Add First Patient</button>
+</div>
+{% endif %}
+
+<!-- Add Patient Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-box">
+    <h3>Add Patient</h3>
+    <p class="sub">Fill in what you know — all fields except name are optional.</p>
+    <form action="/patients/new" method="POST">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>First Name *</label>
+          <input type="text" name="first_name" placeholder="Sarah" required>
+        </div>
+        <div class="form-field">
+          <label>Last Name *</label>
+          <input type="text" name="last_name" placeholder="Johnson" required>
+        </div>
+        <div class="form-field">
+          <label>Date of Birth</label>
+          <input type="text" name="dob" placeholder="MM/DD/YYYY">
+        </div>
+        <div class="form-field">
+          <label>Sex</label>
+          <input type="text" name="sex" placeholder="M / F / Other">
+        </div>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" name="phone" placeholder="+15405551234">
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="sarah@email.com">
+        </div>
+        <div class="form-field full">
+          <label>Address</label>
+          <input type="text" name="address" placeholder="123 Main St, City, State">
+        </div>
+        <div class="form-field full">
+          <label>Allergies</label>
+          <input type="text" name="allergies" placeholder="Penicillin, Peanuts">
+        </div>
+        <div class="form-field full">
+          <label>Current Medications</label>
+          <input type="text" name="current_medications" placeholder="Lisinopril 10mg, Metformin 500mg">
+        </div>
+        <div class="form-field full">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="Any additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Save Patient</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('addModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+</script>
+{% endblock %}

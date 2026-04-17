@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliCare — My Health Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #f0f6fb; color: #0a2540; min-height: 100vh; }
+
+    nav {
+      background: white;
+      border-bottom: 1px solid #d0dce8;
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 8px rgba(10,37,64,0.06);
+    }
+
+    .nav-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00838f, #00bcd4);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 16px; color: white;
+    }
+    .nav-name { font-family: 'DM Serif Display', serif; font-size: 20px; color: #0a2540; }
+    .nav-name span { color: #00bcd4; }
+    .nav-badge {
+      background: #e0f7fa; color: #00838f;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 14px; font-size: 14px; color: #4a6080; }
+    .nav-right a { color: #00838f; text-decoration: none; font-weight: 500; }
+    .nav-right a:hover { text-decoration: underline; }
+
+    main { max-width: 800px; margin: 0 auto; padding: 36px 24px; }
+
+    .welcome {
+      background: linear-gradient(135deg, #0a2540, #00838f);
+      border-radius: 18px;
+      padding: 32px 36px;
+      color: white;
+      margin-bottom: 28px;
+    }
+
+    .welcome h1 { font-family: 'DM Serif Display', serif; font-size: 28px; margin-bottom: 6px; }
+    .welcome p { opacity: 0.78; font-size: 14px; }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .info-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #d0dce8;
+      padding: 18px 20px;
+      box-shadow: 0 1px 6px rgba(10,37,64,0.06);
+    }
+
+    .info-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #8aa0b8;
+      margin-bottom: 6px;
+    }
+
+    .info-card .value { font-size: 14px; color: #0a2540; line-height: 1.5; }
+    .info-card.alert .value { color: #e65100; }
+
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: #0a2540;
+      margin-bottom: 14px;
+    }
+
+    .visit-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #d0dce8;
+      padding: 18px 22px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+      box-shadow: 0 1px 6px rgba(10,37,64,0.06);
+    }
+
+    .visit-card:hover {
+      box-shadow: 0 4px 18px rgba(10,37,64,0.1);
+      transform: translateY(-1px);
+      border-color: #00838f;
+    }
+
+    .visit-id { font-weight: 600; font-size: 15px; }
+    .visit-date { font-size: 13px; color: #8aa0b8; margin-top: 3px; }
+
+    .view-btn {
+      background: #e0f7fa;
+      color: #00838f;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      background: white;
+      border-radius: 14px;
+      border: 2px dashed #d0dce8;
+      color: #8aa0b8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">I</div>
+      <span class="nav-name">Intelli<span>Care</span></span>
+      <span class="nav-badge">Patient Portal</span>
+    </div>
+    <div class="nav-right">
+      <span>👤 {{ session.patient_name }}</span>
+      <a href="/portal/logout">Sign out</a>
+    </div>
+  </nav>
+
+  <main>
+    {# patient: 0=id, 1=first_name, 2=last_name, 3=dob, 4=sex, 5=phone, 6=email, 7=address, 8=pin, 9=allergies, 10=medications, 11=notes #}
+    <div class="welcome">
+      <h1>Hello, {{ (patient[1]~' '~patient[2]) if patient else session.patient_name }} 👋</h1>
+      <p>Here you can view your visit summaries and follow-up messages from your care team.</p>
+    </div>
+
+    {% if patient %}
+    <div class="info-row">
+      {% if patient[3] %}
+      <div class="info-card">
+        <div class="label">Date of Birth</div>
+        <div class="value">{{ patient[3] }}</div>
+      </div>
+      {% endif %}
+      {% if patient[5] %}
+      <div class="info-card">
+        <div class="label">Phone</div>
+        <div class="value">{{ patient[5] }}</div>
+      </div>
+      {% endif %}
+      {% if patient[9] %}
+      <div class="info-card alert">
+        <div class="label">⚠ Allergies</div>
+        <div class="value">{{ patient[9] }}</div>
+      </div>
+      {% endif %}
+      {% if patient[10] %}
+      <div class="info-card">
+        <div class="label">💊 Medications</div>
+        <div class="value">{{ patient[10] }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="section-title">Your Visits</div>
+
+    {% if visits %}
+      {% for vid, ts, types in visits %}
+      <a href="/portal/visit/{{ vid }}" class="visit-card">
+        <div>
+          <div class="visit-id">Visit {{ vid }}</div>
+          <div class="visit-date">{{ ts }}</div>
+        </div>
+        <button class="view-btn">View Summary →</button>
+      </a>
+      {% endfor %}
+    {% else %}
+    <div class="empty">
+      No visit summaries yet. Your care team will link your visits after your appointment.
+    </div>
+    {% endif %}
+  </main>
+</body>
+</html>

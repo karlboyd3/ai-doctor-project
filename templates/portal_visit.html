@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliCare — Visit Summary</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #f0f6fb; color: #0a2540; min-height: 100vh; }
+
+    nav {
+      background: white;
+      border-bottom: 1px solid #d0dce8;
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 8px rgba(10,37,64,0.06);
+    }
+
+    .nav-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00838f, #00bcd4);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 16px; color: white;
+    }
+    .nav-name { font-family: 'DM Serif Display', serif; font-size: 20px; color: #0a2540; }
+    .nav-name span { color: #00bcd4; }
+    .nav-badge {
+      background: #e0f7fa; color: #00838f;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 14px; font-size: 14px; }
+    .nav-right a { color: #00838f; text-decoration: none; font-weight: 500; }
+
+    main { max-width: 720px; margin: 0 auto; padding: 36px 24px; }
+
+    .breadcrumb {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: #8aa0b8; margin-bottom: 24px;
+    }
+    .breadcrumb a { color: #00838f; text-decoration: none; }
+
+    .artifact-card {
+      background: white;
+      border-radius: 14px;
+      border: 1px solid #d0dce8;
+      overflow: hidden;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 8px rgba(10,37,64,0.06);
+    }
+
+    .artifact-card.summary     { border-top: 3px solid #2e7d32; }
+    .artifact-card.followup    { border-top: 3px solid #e65100; }
+
+    .artifact-header {
+      padding: 16px 22px;
+      border-bottom: 1px solid #f0f4f8;
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .artifact-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .icon-summary  { background: #e8f5e9; }
+    .icon-followup { background: #fff3e0; }
+
+    .artifact-title { font-weight: 600; font-size: 14px; }
+    .artifact-sub   { font-size: 12px; color: #8aa0b8; margin-top: 2px; }
+
+    .artifact-body {
+      padding: 22px;
+      font-size: 15px;
+      line-height: 1.8;
+      color: #1a2a3a;
+      white-space: pre-wrap;
+    }
+
+    .artifact-footer {
+      padding: 12px 22px;
+      background: #f8fbfd;
+      border-top: 1px solid #f0f4f8;
+    }
+
+    .copy-btn {
+      background: white;
+      border: 1px solid #d0dce8;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      color: #4a6080;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover { background: #0a2540; color: white; border-color: #0a2540; }
+
+    .empty {
+      text-align: center;
+      padding: 64px 24px;
+      background: white;
+      border-radius: 14px;
+      border: 2px dashed #d0dce8;
+      color: #8aa0b8;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">I</div>
+      <span class="nav-name">Intelli<span>Care</span></span>
+      <span class="nav-badge">Patient Portal</span>
+    </div>
+    <div class="nav-right">
+      <a href="/portal/dashboard">← My Visits</a>
+      <a href="/portal/logout">Sign out</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="breadcrumb">
+      <a href="/portal/dashboard">My Visits</a>
+      <span>›</span>
+      <span>Visit {{ visit_id }}</span>
+    </div>
+
+    {% if artifacts %}
+      {% for atype, content, ts in artifacts %}
+
+      {# English summary — shown only when patient prefers English #}
+      {% if atype == 'summary' and patient_language != 'es' %}
+      <div class="artifact-card summary">
+        <div class="artifact-header">
+          <div class="artifact-icon icon-summary">📋</div>
+          <div>
+            <div class="artifact-title">Visit Summary</div>
+            <div class="artifact-sub">{{ ts }}</div>
+          </div>
+        </div>
+        <div class="artifact-body" id="content-summary">{{ content }}</div>
+        <div class="artifact-footer">
+          <button class="copy-btn" onclick="copyText('content-summary', this)">⎘ Copy</button>
+        </div>
+      </div>
+
+      {# English follow-up — shown only when patient prefers English #}
+      {% elif atype == 'followup_message' and patient_language != 'es' %}
+      <div class="artifact-card followup">
+        <div class="artifact-header">
+          <div class="artifact-icon icon-followup">💬</div>
+          <div>
+            <div class="artifact-title">Follow-up Message</div>
+            <div class="artifact-sub">From your care team</div>
+          </div>
+        </div>
+        <div class="artifact-body" id="content-followup">{{ content }}</div>
+        <div class="artifact-footer">
+          <button class="copy-btn" onclick="copyText('content-followup', this)">⎘ Copy</button>
+        </div>
+      </div>
+
+      {# Spanish summary — shown when patient prefers Spanish #}
+      {% elif atype == 'summary_es' and patient_language == 'es' %}
+      <div class="artifact-card summary">
+        <div class="artifact-header">
+          <div class="artifact-icon icon-summary">📋</div>
+          <div>
+            <div class="artifact-title">Resumen de su Visita</div>
+            <div class="artifact-sub">{{ ts }}</div>
+          </div>
+        </div>
+        <div class="artifact-body" id="content-summary">{{ content }}</div>
+        <div class="artifact-footer">
+          <button class="copy-btn" onclick="copyText('content-summary', this)">⎘ Copiar</button>
+        </div>
+      </div>
+
+      {# Spanish follow-up — shown when patient prefers Spanish #}
+      {% elif atype == 'followup_es' and patient_language == 'es' %}
+      <div class="artifact-card followup">
+        <div class="artifact-header">
+          <div class="artifact-icon icon-followup">💬</div>
+          <div>
+            <div class="artifact-title">Mensaje de Seguimiento</div>
+            <div class="artifact-sub">De parte de su equipo médico</div>
+          </div>
+        </div>
+        <div class="artifact-body" id="content-followup">{{ content }}</div>
+        <div class="artifact-footer">
+          <button class="copy-btn" onclick="copyText('content-followup', this)">⎘ Copiar</button>
+        </div>
+      </div>
+      {% endif %}
+
+      {% endfor %}
+    {% else %}
+    <div class="empty">
+      <div style="font-size:40px;margin-bottom:14px;">📭</div>
+      <p>Your visit summary isn't ready yet. Check back after your appointment.</p>
+    </div>
+    {% endif %}
+  </main>
+
+  <script>
+  function copyText(id, btn) {
+    navigator.clipboard.writeText(document.getElementById(id).textContent.trim()).then(() => {
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = '⎘ Copy'; }, 2000);
+    });
+  }
+  </script>
+</body>
+</html>

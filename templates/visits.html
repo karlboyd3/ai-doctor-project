@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — All Visits{% endblock %}
+
+{% block extra_head %}
+<style>
+  .visits-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .filter-bar .search-bar { flex: 1; max-width: 360px; }
+
+  .filter-chip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+  }
+
+  .filter-chip:hover, .filter-chip.active {
+    background: var(--brand-deep);
+    color: white;
+    border-color: var(--brand-deep);
+  }
+
+  .visits-table {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .table-header {
+    display: grid;
+    grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr;
+    padding: 12px 24px;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--surface-3);
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+  }
+
+  .table-row:last-child { border-bottom: none; }
+
+  .table-row:hover {
+    background: var(--surface-2);
+  }
+
+  .table-row:hover .row-id { color: var(--brand-teal); }
+
+  .row-id { font-weight: 600; font-size: 14px; color: var(--brand-deep); }
+
+  .row-artifacts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 64px 40px;
+    color: var(--text-muted);
+  }
+
+  .empty-state h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .empty-state p { font-size: 14px; margin-bottom: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="/">Dashboard</a>
+    <span>›</span>
+    <span>Visits</span>
+  </div>
+  <div class="visits-header">
+    <div>
+      <h1>Patient Visits</h1>
+      <p>All recorded visits and their AI-generated artifacts</p>
+    </div>
+    <a href="/pipeline" class="btn btn-primary">▶ Run New Pipeline</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="search-bar">
+    <span style="color:var(--text-muted);font-size:15px;">⌕</span>
+    <input type="text" placeholder="Search visits..." id="searchInput" oninput="filterRows()">
+  </div>
+  <button class="filter-chip active" onclick="filterChip(this,'all')">All</button>
+  <button class="filter-chip" onclick="filterChip(this,'summary')">Has Summary</button>
+  <button class="filter-chip" onclick="filterChip(this,'transcript')">Has Transcript</button>
+</div>
+
+<div class="visits-table">
+  {% if visits %}
+  <div class="table-header">
+    <span>Patient</span>
+    <span>Artifacts</span>
+    <span>Status</span>
+    <span>Records</span>
+    <span></span>
+  </div>
+  {% for visit_id, artifact_types, count, patient_name in visits %}
+  <a href="/visit/{{ visit_id }}" class="table-row" data-artifacts="{{ artifact_types }}">
+    <div>
+      <div class="row-id">{% if patient_name %}{{ patient_name }}{% else %}{{ visit_id }}{% endif %}</div>
+      {% if patient_name %}<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">{{ visit_id }}</div>{% endif %}
+    </div>
+    <div class="row-artifacts">
+      {% if 'transcript' in artifact_types %}
+        <span class="badge badge-purple">Transcript</span>
+      {% endif %}
+      {% if 'summary' in artifact_types %}
+        <span class="badge badge-success">Summary</span>
+      {% endif %}
+      {% if 'followup_message' in artifact_types %}
+        <span class="badge badge-warning">Follow-up</span>
+      {% endif %}
+    </div>
+    <span><span class="badge badge-teal">Complete</span></span>
+    <span style="font-size:13px;color:var(--text-muted);">{{ count }} record{% if count != 1 %}s{% endif %}</span>
+    <span style="color:var(--text-muted);font-size:18px;text-align:right;">›</span>
+  </a>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <h3>No visits yet</h3>
+    <p>Run the AI pipeline to generate your first visit record</p>
+    <a href="/pipeline" class="btn btn-primary">▶ Run Pipeline</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterRows() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.table-row').forEach(row => {
+    row.style.display = row.dataset.artifacts.toLowerCase().includes(q) ||
+      row.querySelector('.row-id').textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+let activeFilter = 'all';
+function filterChip(el, type) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.table-row').forEach(row => {
+    const arts = row.dataset.artifacts || '';
+    row.style.display = (type === 'all' || arts.includes(type)) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

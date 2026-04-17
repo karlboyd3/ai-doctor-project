@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliCare — Patient Intake</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #e0f7fa 0%, #e3f2fd 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(10,37,64,0.12);
+      padding: 48px;
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #00838f, #00bcd4);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: white;
+    }
+
+    .logo-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: #0a2540;
+    }
+
+    .logo-name span { color: #00bcd4; }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      color: #0a2540;
+      margin-bottom: 8px;
+    }
+
+    .sub {
+      font-size: 14px;
+      color: #8aa0b8;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #4a6080;
+      margin-bottom: 6px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: #0a2540;
+      outline: none;
+      transition: all 0.2s;
+      background: #f4f8fb;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #00838f;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(0,131,143,0.12);
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #1565c0, #00838f);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(21,101,192,0.3);
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(21,101,192,0.4); }
+
+    .error {
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #e65100;
+      margin-bottom: 20px;
+    }
+
+    /* Confirmation state */
+    .confirm-box {
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    .confirm-icon { font-size: 56px; margin-bottom: 20px; }
+
+    .confirm-box h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 26px;
+      color: #0a2540;
+      margin-bottom: 10px;
+    }
+
+    .confirm-box p { font-size: 14px; color: #4a6080; margin-bottom: 28px; line-height: 1.6; }
+
+    .pin-display {
+      background: linear-gradient(135deg, #e0f7fa, #e3f2fd);
+      border: 2px solid #00acc1;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .pin-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #00838f; margin-bottom: 10px; }
+
+    .pin-number {
+      font-family: 'DM Serif Display', serif;
+      font-size: 52px;
+      letter-spacing: 12px;
+      color: #0a2540;
+      font-weight: 700;
+    }
+
+    .pin-note { font-size: 12px; color: #8aa0b8; margin-top: 10px; }
+
+    .portal-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: #0a2540;
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .portal-link:hover { background: #0e3460; transform: translateY(-1px); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-name">Intelli<span>Care</span></div>
+    </div>
+
+    {% if submitted %}
+    <!-- Confirmation screen -->
+    <div class="confirm-box">
+      <div class="confirm-icon">✅</div>
+      <h2>You're all set, {{ name }}!</h2>
+      <p>Your information has been saved. Here is your <strong>patient portal PIN</strong> — write it down or take a photo. You'll need it to log in and view your visit summaries.</p>
+
+      <div class="pin-display">
+        <div class="pin-label">Your Portal PIN</div>
+        <div class="pin-number">{{ pin }}</div>
+        <div class="pin-note">Keep this safe — your doctor can reset it if lost.</div>
+      </div>
+
+      <a href="/portal" class="portal-link">→ Go to Patient Portal</a>
+    </div>
+
+    {% else %}
+    <!-- Intake form -->
+    <h1>Patient Intake</h1>
+    <p class="sub">Please fill out your information before your appointment. This helps your care team provide the best possible visit.</p>
+
+    {% if error %}
+    <div class="error">⚠ {{ error }}</div>
+    {% endif %}
+
+    <form action="/intake/submit" method="POST">
+      <div class="form-grid">
+        <div>
+          <label>First Name *</label>
+          <input type="text" name="first_name" placeholder="Sarah" required>
+        </div>
+        <div>
+          <label>Last Name *</label>
+          <input type="text" name="last_name" placeholder="Johnson" required>
+        </div>
+        <div>
+          <label>Date of Birth</label>
+          <input type="text" name="dob" placeholder="MM/DD/YYYY">
+        </div>
+        <div>
+          <label>Sex</label>
+          <input type="text" name="sex" placeholder="M / F / Other">
+        </div>
+        <div>
+          <label>Phone Number</label>
+          <input type="tel" name="phone" placeholder="+1 540 555 1234">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" name="email" placeholder="sarah@email.com">
+        </div>
+        <div class="full">
+          <label>Address</label>
+          <input type="text" name="address" placeholder="123 Main St, City, State">
+        </div>
+        <div class="full">
+          <label>Allergies</label>
+          <input type="text" name="allergies" placeholder="e.g. Penicillin, Peanuts (leave blank if none)">
+        </div>
+        <div class="full">
+          <label>Current Medications</label>
+          <input type="text" name="current_medications" placeholder="e.g. Lisinopril 10mg, Metformin 500mg (leave blank if none)">
+        </div>
+        <div class="full">
+          <label>Anything else your doctor should know?</label>
+          <textarea name="notes" placeholder="Recent symptoms, concerns, reason for visit..."></textarea>
+        </div>
+        <div class="full">
+          <label>Preferred Language / Idioma preferido</label>
+          <select name="preferred_language" style="width:100%;padding:11px 14px;border:1px solid #d0dce8;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;color:#0a2540;outline:none;background:#f4f8fb;">
+            <option value="">English</option>
+            <option value="es">Spanish / Español</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn">Submit & Get My Portal PIN →</button>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

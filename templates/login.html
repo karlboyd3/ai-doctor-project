@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliCare — Staff Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #0a2540 0%, #0e3460 50%, #00838f 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.3);
+      padding: 48px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #00838f, #00bcd4);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px; color: white;
+    }
+    .logo-name { font-family: 'DM Serif Display', serif; font-size: 22px; color: #0a2540; }
+    .logo-name span { color: #00bcd4; }
+
+    .staff-badge {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1565c0;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    h1 { font-family: 'DM Serif Display', serif; font-size: 28px; color: #0a2540; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #8aa0b8; margin-bottom: 28px; line-height: 1.6; }
+
+    .form-field { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #4a6080;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: #0a2540;
+      outline: none;
+      transition: all 0.2s;
+      background: #f4f8fb;
+    }
+
+    input:focus {
+      border-color: #1565c0;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #0a2540, #1565c0);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(10,37,64,0.35);
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(10,37,64,0.45); }
+
+    .error {
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #e65100;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .portal-link {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #8aa0b8;
+    }
+
+    .portal-link a { color: #00838f; text-decoration: none; font-weight: 500; }
+    .portal-link a:hover { text-decoration: underline; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 20px;
+      color: #d0dce8;
+      font-size: 12px;
+      color: #b0c0d4;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e8f0f8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-name">Intelli<span>Care</span></div>
+    </div>
+
+    <div class="staff-badge">Staff Access</div>
+    <h1>Sign in</h1>
+    <p class="sub">Enter your staff credentials to access the clinical dashboard.</p>
+
+    {% if error %}
+    <div class="error">⚠ {{ error }}</div>
+    {% endif %}
+
+    <form action="/login" method="POST">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="form-field">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="staff username" required autocomplete="username" autofocus>
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn">Sign In →</button>
+    </form>
+
+    <div class="divider">or</div>
+
+    <div class="portal-link">
+      Are you a patient? <a href="/portal">Go to Patient Portal</a>
+    </div>
+  </div>
+</body>
+</html>

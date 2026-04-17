@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Clinical Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      color: #1a2a3a;
+    }
+    header {
+      background: #1a3a5c;
+      color: white;
+      padding: 20px 40px;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .subtitle {
+      font-size: 13px;
+      opacity: 0.7;
+      font-weight: 400;
+      margin-top: 4px;
+    }
+    main {
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    h2 { font-size: 16px; color: #4a6080; margin-bottom: 16px; }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 18px 24px;
+      margin-bottom: 12px;
+      border: 1px solid #dde4ee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, transform 0.1s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+    .visit-id { font-weight: 600; font-size: 15px; }
+    .arrow { color: #aab; font-size: 18px; }
+    .empty { color: #888; font-style: italic; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    Clinical Portal
+    <div class="subtitle">Doctor dashboard — recent visits</div>
+  </header>
+  <main>
+    <h2>Recent visits</h2>
+    {% if visits %}
+      {% for visit in visits %}
+      <a href="/visit/{{ visit }}" class="card">
+        <span class="visit-id">Visit: {{ visit }}</span>
+        <span class="arrow">›</span>
+      </a>
+      {% endfor %}
+    {% else %}
+      <p class="empty">No visits found in the database.</p>
+    {% endif %}
+  </main>
+</body>
+</html>
