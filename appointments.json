@@ -1,0 +1,30 @@
+[
+  {
+    "id": "APT_20260417_133839",
+    "datetime": "2026-04-17T09:00:00",
+    "patient_name": "John Guarcia",
+    "patient_phone": "",
+    "visit_id": "manual",
+    "status": "confirmed",
+    "booked_at": "2026-04-17T13:38:39.703435"
+  },
+  {
+    "id": "APT_20260417_133844",
+    "datetime": "2026-04-17T09:00:00",
+    "patient_name": "John Guarcia",
+    "patient_phone": "",
+    "visit_id": "manual",
+    "status": "confirmed",
+    "booked_at": "2026-04-17T13:38:44.082274"
+  },
+  {
+    "id": "APT_20260417_134757",
+    "datetime": "2026-04-17T10:00:00",
+    "patient_name": "Juan Garcia Jr.",
+    "patient_id": "P_20260412_145423",
+    "patient_phone": "",
+    "visit_id": "manual",
+    "status": "confirmed",
+    "booked_at": "2026-04-17T13:47:57.174235"
+  }
+]
