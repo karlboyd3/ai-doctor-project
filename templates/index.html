@@ -439,7 +439,13 @@
       <a href="/pipeline">Run Pipeline <span class="nav-badge">AI</span></a>
     </div>
     <div class="flex items-center gap-3">
-      <div class="nav-avatar" title="Dr. User">Dr</div>
+      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">{{ session.get('staff_user', 'admin') }}</span>
+      <a href="/logout" style="font-size:13px;font-weight:600;color:#0a2540;background:#00e5ff;text-decoration:none;padding:7px 16px;border-radius:var(--radius-sm);transition:var(--transition);white-space:nowrap;"
+         onmouseover="this.style.background='#80ffff'"
+         onmouseout="this.style.background='#00e5ff'">
+        Sign Out
+      </a>
+      <div class="nav-avatar" title="Staff">{{ (session.get('staff_user', 'A') | upper)[0] }}</div>
     </div>
   </nav>
 
@@ -489,6 +495,48 @@
       <a href="/transcribe" class="btn btn-primary">🎙 New Recording</a>
       <a href="/pipeline" class="btn btn-ghost">⚡ Run Pipeline</a>
       <a href="/visits" class="btn btn-ghost">📋 View All Visits</a>
+      <button class="btn btn-ghost" style="color:var(--brand-teal);border-color:var(--brand-teal);"
+              onclick="document.getElementById('scheduleModal').style.display='flex'">📅 Schedule Appointment</button>
+    </div>
+
+    <!-- Schedule Appointment Modal -->
+    <div id="scheduleModal" style="display:none;position:fixed;inset:0;background:rgba(10,37,64,0.5);z-index:200;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:var(--radius-lg);padding:36px;max-width:460px;width:90%;box-shadow:var(--shadow-lg);">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:6px;color:var(--brand-deep);">📅 Schedule Appointment</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Manually book a time slot on the calendar.</p>
+        <form action="/api/appointments/book" method="POST">
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Patient Name</label>
+            <input type="text" name="patient_name" placeholder="e.g. Jane Smith" required
+                   style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Date</label>
+              <input type="date" name="appt_date" required
+                     style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Time</label>
+              <select name="appt_hour" required
+                      style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+                <option value="9">9:00 AM</option>
+                <option value="10">10:00 AM</option>
+                <option value="11">11:00 AM</option>
+                <option value="12">12:00 PM</option>
+                <option value="13">1:00 PM</option>
+                <option value="14">2:00 PM</option>
+                <option value="15">3:00 PM</option>
+                <option value="16">4:00 PM</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:24px;">
+            <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Book Appointment</button>
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('scheduleModal').style.display='none'">Cancel</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Weekly Appointment Calendar -->

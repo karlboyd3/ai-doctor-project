@@ -858,6 +858,54 @@ def send_appointment_options(visit_id):
     return redirect(url_for("visit_detail", visit_id=visit_id))
 
 
+@app.route("/api/appointments/book", methods=["POST"])
+@staff_required
+def book_appointment_manual():
+    from appointments import book_appointment
+    patient_name = request.form.get("patient_name", "").strip()
+    appt_date    = request.form.get("appt_date", "").strip()
+    appt_hour    = request.form.get("appt_hour", "").strip()
+    if not patient_name or not appt_date or not appt_hour:
+        flash("Please fill in all fields.")
+        return redirect(url_for("index"))
+    try:
+        dt = datetime.fromisoformat(f"{appt_date}T{appt_hour.zfill(2)}:00:00")
+        book_appointment(dt, patient_name, "", "manual")
+        flash(f"Appointment booked for {patient_name}!")
+    except Exception as e:
+        flash(f"Error booking appointment: {str(e)}")
+    return redirect(url_for("index"))
+
+
+@app.route("/api/send-appointment-options/direct", methods=["POST"])
+@staff_required
+def send_appointment_options_direct():
+    """Send appointment options from patient profile page (no visit ID)."""
+    phone        = request.form.get("phone", "").strip()
+    patient_name = request.form.get("patient_name", "Patient").strip()
+    if not phone:
+        flash("Please enter a phone number.")
+        return redirect(request.referrer or url_for("patients_page"))
+
+    from appointments import get_available_slots, set_pending_options, fmt_slot
+    slots = get_available_slots(3)
+    set_pending_options(phone, slots, patient_name, "direct")
+
+    lines = "\n".join(f"{i}. {fmt_slot(s)}" for i, s in enumerate(slots, 1))
+    body  = (f"IntelliCare: Hi {patient_name}, please choose an appointment time:\n\n"
+             f"{lines}\n\nReply 1, 2, or 3 to confirm.")
+
+    try:
+        from twilio.rest import Client
+        twilio = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_TOKEN"))
+        twilio.messages.create(body=body, from_=os.getenv("TWILIO_FROM"), to=phone)
+        flash(f"Appointment options sent to {phone}!")
+    except Exception as e:
+        flash(f"SMS error: {str(e)}")
+
+    return redirect(request.referrer or url_for("patients_page"))
+
+
 @app.route("/api/sms-reply", methods=["POST"])
 def sms_reply_webhook():
     """Twilio inbound SMS webhook — patient replies 1/2/3 to book appointment."""
