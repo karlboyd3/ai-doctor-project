@@ -798,6 +798,97 @@ def delete_patient(patient_id):
         flash(f"Error deleting patient: {str(e)}")
     return redirect(url_for("patients_page"))
 
+# ── APPOINTMENTS ─────────────────────────────────────────
+
+@app.route("/api/appointments")
+@staff_required
+def get_appointments_api():
+    from appointments import get_appointments_in_range
+    from datetime import date
+    start_str = request.args.get('start', date.today().isoformat())
+    end_str   = request.args.get('end',   date.today().isoformat())
+    try:
+        start = date.fromisoformat(start_str)
+        end   = date.fromisoformat(end_str)
+        return jsonify(get_appointments_in_range(start, end))
+    except Exception:
+        return jsonify([])
+
+
+@app.route("/api/send-appointment-options/<path:visit_id>", methods=["POST"])
+@staff_required
+def send_appointment_options(visit_id):
+    phone = request.form.get("phone", "").strip()
+    if not phone:
+        flash("Please enter a phone number.")
+        return redirect(url_for("visit_detail", visit_id=visit_id))
+
+    patient_name = "Patient"
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT p.first_name, p.last_name
+            FROM patients p
+            JOIN visit_artifacts va ON va.content = p.patient_id
+            WHERE va.visit_id = '{safe_sql(visit_id)}' AND va.artifact_type = 'patient_id'
+            LIMIT 1
+        """)
+        row = cursor.fetchone()
+        if row:
+            patient_name = f"{row[0] or ''} {row[1] or ''}".strip()
+    except Exception:
+        pass
+
+    from appointments import get_available_slots, set_pending_options, fmt_slot
+    slots = get_available_slots(3)
+    set_pending_options(phone, slots, patient_name, visit_id)
+
+    lines = "\n".join(f"{i}. {fmt_slot(s)}" for i, s in enumerate(slots, 1))
+    body = (f"IntelliCare: Hi {patient_name}, please choose a follow-up appointment:\n\n"
+            f"{lines}\n\nReply 1, 2, or 3 to confirm.")
+
+    try:
+        from twilio.rest import Client
+        twilio = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_TOKEN"))
+        twilio.messages.create(body=body, from_=os.getenv("TWILIO_FROM"), to=phone)
+        flash(f"Appointment options sent to {phone}!")
+    except Exception as e:
+        flash(f"SMS error: {str(e)}")
+
+    return redirect(url_for("visit_detail", visit_id=visit_id))
+
+
+@app.route("/api/sms-reply", methods=["POST"])
+def sms_reply_webhook():
+    """Twilio inbound SMS webhook — patient replies 1/2/3 to book appointment."""
+    from appointments import get_pending_options, book_appointment, clear_pending_options, fmt_slot
+    from_phone = request.form.get("From", "")
+    body       = request.form.get("Body", "").strip()
+
+    def twiml(msg):
+        return (f'<?xml version="1.0" encoding="UTF-8"?>'
+                f'<Response><Message>{msg}</Message></Response>',
+                200, {'Content-Type': 'text/xml'})
+
+    pending = get_pending_options(from_phone)
+    if not pending:
+        return twiml("No pending appointment request found. Please contact the office.")
+
+    if body not in ('1', '2', '3'):
+        return twiml("Please reply with 1, 2, or 3 to choose your appointment time.")
+
+    options = pending['options']
+    choice  = int(body) - 1
+    if choice >= len(options):
+        return twiml("Invalid choice. Please reply with 1, 2, or 3.")
+
+    chosen = datetime.fromisoformat(options[choice])
+    book_appointment(chosen, pending['patient_name'], from_phone, pending['visit_id'])
+    clear_pending_options(from_phone)
+
+    return twiml(f"Your appointment is confirmed for {fmt_slot(chosen)}. See you then! — IntelliCare")
+
+
 @app.route("/patient/<patient_id>/link-visit", methods=["POST"])
 @staff_required
 def link_visit_to_patient(patient_id):

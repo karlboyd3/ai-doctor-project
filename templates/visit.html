@@ -310,6 +310,10 @@
     <button class="btn btn-ghost" onclick="document.getElementById('smsModal').classList.add('open')">
       📱 Send SMS
     </button>
+    <button class="btn btn-ghost" onclick="document.getElementById('apptModal').classList.add('open')"
+            style="color:var(--brand-teal);border-color:var(--brand-teal);">
+      📅 Book Appointment
+    </button>
     <button class="btn btn-primary" onclick="window.print()">⎙ Print Record</button>
     <button class="btn btn-ghost" style="color:#c62828;border-color:#c62828;"
             onclick="document.getElementById('deleteModal').classList.add('open')">
@@ -596,6 +600,24 @@
     </form>
   </div>
 </div>
+<!-- Appointment Modal -->
+<div class="send-sms-modal" id="apptModal">
+  <div class="modal-box">
+    <h3>📅 Send Appointment Options</h3>
+    <p>The patient will receive an SMS with 3 available time slots and can reply 1, 2, or 3 to confirm.</p>
+    <form action="/api/send-appointment-options/{{ visit_id }}" method="POST">
+      <div class="form-field">
+        <label>Patient phone number</label>
+        <input type="tel" name="phone" placeholder="+15405551234"
+               value="{{ patient[3] if patient and patient[3] else '' }}" required>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">📅 Send Options</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('apptModal').classList.remove('open')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -717,6 +739,9 @@ function openEmail(artifactType) {
 }
 
 document.getElementById('smsModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+document.getElementById('apptModal').addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('open');
 });
 
