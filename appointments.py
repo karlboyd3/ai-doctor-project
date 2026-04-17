@@ -56,13 +56,14 @@ def get_available_slots(count=3):
     return slots
 
 
-def book_appointment(dt, patient_name, patient_phone, visit_id):
+def book_appointment(dt, patient_name, patient_phone, visit_id, patient_id=""):
     appts = _load(APPOINTMENTS_FILE)
     appt_id = f"APT_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     appts.append({
         'id': appt_id,
         'datetime': dt.isoformat(),
         'patient_name': patient_name,
+        'patient_id': patient_id,
         'patient_phone': patient_phone,
         'visit_id': visit_id,
         'status': 'confirmed',
@@ -72,11 +73,12 @@ def book_appointment(dt, patient_name, patient_phone, visit_id):
     return appt_id
 
 
-def set_pending_options(phone, slots, patient_name, visit_id):
+def set_pending_options(phone, slots, patient_name, visit_id, patient_id=""):
     pending = _load(PENDING_FILE)
     pending[phone] = {
         'options': [s.isoformat() for s in slots],
         'patient_name': patient_name,
+        'patient_id': patient_id,
         'visit_id': visit_id
     }
     _save(PENDING_FILE, pending)

@@ -69,7 +69,7 @@ def portal_required(f):
 
 def ensure_patients_table():
     # Add missing columns if they don't exist yet
-    for col in ['allergies', 'current_medications', 'notes', 'preferred_language']:
+    for col in ['allergies', 'current_medications', 'notes', 'preferred_language', 'suffix']:
         try:
             cursor = get_cursor()
             cursor.execute(f"ALTER TABLE patients ADD COLUMN {col} VARCHAR")
@@ -504,7 +504,7 @@ def staff_logout():
 
 def ensure_patients_table():
     # Add missing columns if they don't exist yet
-    for col in ['allergies', 'current_medications', 'notes', 'preferred_language']:
+    for col in ['allergies', 'current_medications', 'notes', 'preferred_language', 'suffix']:
         try:
             cursor = get_cursor()
             cursor.execute(f"ALTER TABLE patients ADD COLUMN {col} VARCHAR")
@@ -519,7 +519,7 @@ def patients_page():
     try:
         cursor = get_cursor()
         cursor.execute("""
-            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language
+            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix
             FROM patients
             ORDER BY last_name ASC
         """)
@@ -536,6 +536,7 @@ def new_patient():
     pin         = str(random.randint(100000, 999999))
     first_name  = safe_sql(request.form.get("first_name", ""))
     last_name   = safe_sql(request.form.get("last_name", ""))
+    suffix      = safe_sql(request.form.get("suffix", ""))
     dob         = dob_sql(request.form.get("dob", ""))
     sex         = safe_sql(request.form.get("sex", ""))
     phone       = safe_sql(request.form.get("phone", ""))
@@ -548,8 +549,8 @@ def new_patient():
     try:
         cursor = get_cursor()
         cursor.execute(f"""
-            INSERT INTO patients (patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language)
-            VALUES ('{patient_id}', '{first_name}', '{last_name}', {dob}, '{sex}', '{phone}', '{email}', '{address}', '{pin}', '{allergies}', '{medications}', '{notes}', '{lang}')
+            INSERT INTO patients (patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix)
+            VALUES ('{patient_id}', '{first_name}', '{last_name}', {dob}, '{sex}', '{phone}', '{email}', '{address}', '{pin}', '{allergies}', '{medications}', '{notes}', '{lang}', '{suffix}')
         """)
         cursor.fetchall()
         flash(f"Patient {first_name} {last_name} added. Portal PIN: {pin}")
@@ -564,7 +565,7 @@ def patient_detail(patient_id):
     try:
         cursor = get_cursor()
         cursor.execute(f"""
-            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language
+            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix
             FROM patients WHERE patient_id = '{safe_sql(patient_id)}'
         """)
         patient = cursor.fetchone()
@@ -586,6 +587,7 @@ def patient_detail(patient_id):
 def edit_patient(patient_id):
     first_name  = safe_sql(request.form.get("first_name", ""))
     last_name   = safe_sql(request.form.get("last_name", ""))
+    suffix      = safe_sql(request.form.get("suffix", ""))
     dob         = dob_sql(request.form.get("dob", ""))
     sex         = safe_sql(request.form.get("sex", ""))
     phone       = safe_sql(request.form.get("phone", ""))
@@ -605,7 +607,8 @@ def edit_patient(patient_id):
                     first_name = '{first_name}', last_name = '{last_name}', dob = {dob},
                     sex = '{sex}', phone = '{phone}', email = '{email}', address = '{address}',
                     allergies = '{allergies}', current_medications = '{medications}',
-                    notes = '{notes}', preferred_language = '{lang}', pin = '{new_pin}'
+                    notes = '{notes}', preferred_language = '{lang}', pin = '{new_pin}',
+                    suffix = '{suffix}'
                 WHERE patient_id = '{safe_sql(patient_id)}'
             """)
             flash(f"Patient updated. New PIN: {new_pin}")
@@ -615,7 +618,7 @@ def edit_patient(patient_id):
                     first_name = '{first_name}', last_name = '{last_name}', dob = {dob},
                     sex = '{sex}', phone = '{phone}', email = '{email}', address = '{address}',
                     allergies = '{allergies}', current_medications = '{medications}',
-                    notes = '{notes}', preferred_language = '{lang}'
+                    notes = '{notes}', preferred_language = '{lang}', suffix = '{suffix}'
                 WHERE patient_id = '{safe_sql(patient_id)}'
             """)
             flash("Patient updated successfully!")
@@ -693,7 +696,7 @@ def portal_dashboard():
     try:
         cursor = get_cursor()
         cursor.execute(f"""
-            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language
+            SELECT patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix
             FROM patients WHERE patient_id = '{safe_sql(patient_id)}'
         """)
         patient = cursor.fetchone()
@@ -839,9 +842,22 @@ def send_appointment_options(visit_id):
     except Exception:
         pass
 
+    patient_id_link = ""
+    try:
+        cursor2 = get_cursor()
+        cursor2.execute(f"""
+            SELECT content FROM visit_artifacts
+            WHERE visit_id = '{safe_sql(visit_id)}' AND artifact_type = 'patient_id' LIMIT 1
+        """)
+        row2 = cursor2.fetchone()
+        if row2:
+            patient_id_link = row2[0]
+    except Exception:
+        pass
+
     from appointments import get_available_slots, set_pending_options, fmt_slot
     slots = get_available_slots(3)
-    set_pending_options(phone, slots, patient_name, visit_id)
+    set_pending_options(phone, slots, patient_name, visit_id, patient_id=patient_id_link)
 
     lines = "\n".join(f"{i}. {fmt_slot(s)}" for i, s in enumerate(slots, 1))
     body = (f"IntelliCare: Hi {patient_name}, please choose a follow-up appointment:\n\n"
@@ -863,18 +879,20 @@ def send_appointment_options(visit_id):
 def book_appointment_manual():
     from appointments import book_appointment
     patient_name = request.form.get("patient_name", "").strip()
+    patient_id   = request.form.get("patient_id", "").strip()
     appt_date    = request.form.get("appt_date", "").strip()
     appt_hour    = request.form.get("appt_hour", "").strip()
+    redirect_to  = request.form.get("redirect_to", url_for("index"))
     if not patient_name or not appt_date or not appt_hour:
         flash("Please fill in all fields.")
-        return redirect(url_for("index"))
+        return redirect(redirect_to)
     try:
         dt = datetime.fromisoformat(f"{appt_date}T{appt_hour.zfill(2)}:00:00")
-        book_appointment(dt, patient_name, "", "manual")
+        book_appointment(dt, patient_name, "", "manual", patient_id=patient_id)
         flash(f"Appointment booked for {patient_name}!")
     except Exception as e:
         flash(f"Error booking appointment: {str(e)}")
-    return redirect(url_for("index"))
+    return redirect(redirect_to)
 
 
 @app.route("/api/send-appointment-options/direct", methods=["POST"])
@@ -883,13 +901,14 @@ def send_appointment_options_direct():
     """Send appointment options from patient profile page (no visit ID)."""
     phone        = request.form.get("phone", "").strip()
     patient_name = request.form.get("patient_name", "Patient").strip()
+    patient_id   = request.form.get("patient_id", "").strip()
     if not phone:
         flash("Please enter a phone number.")
         return redirect(request.referrer or url_for("patients_page"))
 
     from appointments import get_available_slots, set_pending_options, fmt_slot
     slots = get_available_slots(3)
-    set_pending_options(phone, slots, patient_name, "direct")
+    set_pending_options(phone, slots, patient_name, "direct", patient_id=patient_id)
 
     lines = "\n".join(f"{i}. {fmt_slot(s)}" for i, s in enumerate(slots, 1))
     body  = (f"IntelliCare: Hi {patient_name}, please choose an appointment time:\n\n"
@@ -931,7 +950,8 @@ def sms_reply_webhook():
         return twiml("Invalid choice. Please reply with 1, 2, or 3.")
 
     chosen = datetime.fromisoformat(options[choice])
-    book_appointment(chosen, pending['patient_name'], from_phone, pending['visit_id'])
+    book_appointment(chosen, pending['patient_name'], from_phone, pending['visit_id'],
+                     patient_id=pending.get('patient_id', ''))
     clear_pending_options(from_phone)
 
     return twiml(f"Your appointment is confirmed for {fmt_slot(chosen)}. See you then! — IntelliCare")
