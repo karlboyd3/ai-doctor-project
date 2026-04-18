@@ -56,7 +56,7 @@ def get_available_slots(count=3):
     return slots
 
 
-def book_appointment(dt, patient_name, patient_phone, visit_id, patient_id=""):
+def book_appointment(dt, patient_name, patient_phone, visit_id, patient_id="", status='confirmed'):
     appts = _load(APPOINTMENTS_FILE)
     appt_id = f"APT_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     appts.append({
@@ -66,11 +66,40 @@ def book_appointment(dt, patient_name, patient_phone, visit_id, patient_id=""):
         'patient_id': patient_id,
         'patient_phone': patient_phone,
         'visit_id': visit_id,
-        'status': 'confirmed',
+        'status': status,
         'booked_at': datetime.now().isoformat()
     })
     _save(APPOINTMENTS_FILE, appts)
     return appt_id
+
+
+def add_followup_pending(dt, patient_name, patient_id, visit_id):
+    return book_appointment(dt, patient_name, "", visit_id, patient_id=patient_id, status='pending')
+
+
+def confirm_appointment(appt_id):
+    appts = _load(APPOINTMENTS_FILE)
+    for a in appts:
+        if a['id'] == appt_id:
+            a['status'] = 'confirmed'
+            break
+    _save(APPOINTMENTS_FILE, appts)
+
+
+def delete_appointment(appt_id):
+    appts = _load(APPOINTMENTS_FILE)
+    appts = [a for a in appts if a['id'] != appt_id]
+    _save(APPOINTMENTS_FILE, appts)
+
+
+def reschedule_appointment(appt_id, new_dt):
+    appts = _load(APPOINTMENTS_FILE)
+    for a in appts:
+        if a['id'] == appt_id:
+            a['datetime'] = new_dt.isoformat()
+            a['status'] = 'confirmed'
+            break
+    _save(APPOINTMENTS_FILE, appts)
 
 
 def set_pending_options(phone, slots, patient_name, visit_id, patient_id=""):

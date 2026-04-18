@@ -171,6 +171,7 @@
 
   .form-field textarea { resize: vertical; min-height: 72px; }
   .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  #moreMenu.open { display: block !important; }
 </style>
 {% endblock %}
 
@@ -208,14 +209,38 @@
       </div>
     </div>
   </div>
-  <div style="display:flex;gap:10px;">
-    <a href="/transcribe?patient_id={{ patient[0] }}&name={{ (patient[1]~' '~patient[2])|urlencode }}&language={{ patient[12] or '' }}" class="btn btn-primary">🎙 Start Visit Recording</a>
-    <button class="btn btn-ghost" style="color:var(--brand-teal);border-color:var(--brand-teal);" onclick="document.getElementById('apptModal').classList.add('open')">📨 Request Appointment</button>
-    <button class="btn btn-ghost" style="color:var(--brand-blue);border-color:var(--brand-blue);" onclick="document.getElementById('assignModal').classList.add('open')">📅 Assign Appointment</button>
-    <button class="btn btn-ghost" onclick="document.getElementById('editModal').classList.add('open')">✏ Edit</button>
-    <button class="btn btn-ghost" onclick="document.getElementById('linkModal').classList.add('open')">🔗 Link Visit</button>
-    <button class="btn btn-ghost" style="color:var(--error,#c62828);border-color:var(--error,#c62828);" onclick="document.getElementById('deleteModal').classList.add('open')">🗑 Delete</button>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="/transcribe?patient_id={{ patient[0] }}&name={{ (patient[1]~' '~patient[2])|urlencode }}&language={{ patient[12] or '' }}" class="btn btn-primary" style="font-size:13px;padding:8px 14px;">🎙 Start Recording</a>
+    <button class="btn btn-ghost" style="font-size:13px;padding:8px 14px;color:var(--brand-teal);border-color:var(--brand-teal);" onclick="document.getElementById('apptModal').classList.add('open')">📨 Request Appt</button>
+    <button class="btn btn-ghost" style="font-size:13px;padding:8px 14px;color:var(--brand-blue);border-color:var(--brand-blue);" onclick="document.getElementById('assignModal').classList.add('open')">📅 Assign Appt</button>
+
+    <!-- Three-dot menu -->
+    <div style="position:relative;" id="moreMenuWrap">
+      <button onclick="document.getElementById('moreMenu').classList.toggle('open')"
+              style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;cursor:pointer;font-size:18px;line-height:1;color:var(--text-secondary);">⋯</button>
+      <div id="moreMenu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);min-width:160px;z-index:100;overflow:hidden;">
+        <button onclick="document.getElementById('editModal').classList.add('open');document.getElementById('moreMenu').classList.remove('open')"
+                style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--text-primary);text-align:left;"
+                onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='none'">✏ Edit Patient</button>
+        <button onclick="document.getElementById('linkModal').classList.add('open');document.getElementById('moreMenu').classList.remove('open')"
+                style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--text-primary);text-align:left;"
+                onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='none'">🔗 Link Visit</button>
+        <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+        <button onclick="document.getElementById('deleteModal').classList.add('open');document.getElementById('moreMenu').classList.remove('open')"
+                style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--error,#c62828);text-align:left;"
+                onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='none'">🗑 Delete Patient</button>
+      </div>
+    </div>
   </div>
+  <script>
+    document.addEventListener('click', function(e) {
+      const wrap = document.getElementById('moreMenuWrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('moreMenu').classList.remove('open');
+      }
+    });
+    document.getElementById('moreMenu').addEventListener('click', function(e) { e.stopPropagation(); });
+  </script>
 </div>
 
 <div class="info-grid">
@@ -397,7 +422,8 @@
       <div class="form-grid">
         <div class="form-field">
           <label>Date</label>
-          <input type="date" name="appt_date" required>
+          <input type="date" name="appt_date" required id="appt_date_input">
+          <script>document.getElementById('appt_date_input').min = new Date().toISOString().split('T')[0];</script>
         </div>
         <div class="form-field">
           <label>Time</label>

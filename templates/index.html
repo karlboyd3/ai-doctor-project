@@ -500,7 +500,11 @@
     <div class="card" style="padding:24px 28px;margin-bottom:28px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <div style="font-weight:600;font-size:15px;color:var(--brand-deep);">📅 Appointment Calendar</div>
-        <div id="cal-week-label" style="font-size:13px;color:var(--text-muted);"></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="cal-prev" onclick="changeWeek(-1)" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;cursor:pointer;font-size:14px;">‹</button>
+          <div id="cal-week-label" style="font-size:13px;color:var(--text-muted);min-width:160px;text-align:center;"></div>
+          <button id="cal-next" onclick="changeWeek(1)" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 10px;cursor:pointer;font-size:14px;">›</button>
+        </div>
       </div>
       <div style="overflow-x:auto;">
         <table id="cal-table" style="width:100%;border-collapse:collapse;min-width:600px;">
@@ -553,17 +557,68 @@
       setTimeout(() => t.remove(), duration);
     }
   </script>
+  <!-- Calendar booking modal -->
+  <div id="calBookModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:32px 36px;max-width:420px;width:90%;box-shadow:var(--shadow-lg);">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--brand-deep);margin-bottom:4px;">Book Appointment</h3>
+      <p id="calBookLabel" style="font-size:13px;color:var(--text-muted);margin-bottom:22px;"></p>
+
+      <input type="hidden" id="calBookDate">
+      <input type="hidden" id="calBookHour">
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Patient</label>
+        <select id="calPatientSel" onchange="calPatientChange()" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+
+      <div id="calNewPatientFields" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">First Name</label>
+            <input id="calFirstName" type="text" placeholder="First" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Last Name</label>
+            <input id="calLastName" type="text" placeholder="Last" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">Phone (optional)</label>
+          <input id="calPhone" type="text" placeholder="Phone number" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <div id="calBookError" style="display:none;color:var(--error,#c62828);font-size:13px;margin-bottom:12px;"></div>
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button onclick="submitCalBook()" style="flex:1;padding:10px;background:var(--brand-blue);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">📅 Book</button>
+        <button onclick="closeCalModal()" style="padding:10px 18px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function() {
     const HOURS = [9,10,11,12,13,14,15,16];
     const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
     const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const CELL_HEIGHT = '52px';
+
+    let weekOffset = 0;
+    let patientCache = null;
+
+    window.changeWeek = function(delta) {
+      weekOffset += delta;
+      loadCalendar();
+    };
 
     function getWeekDates() {
       const today = new Date();
-      const dow = today.getDay(); // 0=Sun
+      const dow = today.getDay();
       const monday = new Date(today);
-      monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+      monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + weekOffset * 7);
       monday.setHours(0,0,0,0);
       const days = [];
       for (let i = 0; i < 5; i++) {
@@ -574,9 +629,7 @@
       return days;
     }
 
-    function isoDate(d) {
-      return d.toISOString().slice(0,10);
-    }
+    function isoDate(d) { return d.toISOString().slice(0,10); }
 
     function fmtHour(h) {
       const ampm = h < 12 ? 'AM' : 'PM';
@@ -588,51 +641,52 @@
       const days = getWeekDates();
       const today = new Date(); today.setHours(0,0,0,0);
 
-      // Label
       document.getElementById('cal-week-label').textContent =
         `${MONTH_NAMES[days[0].getMonth()]} ${days[0].getDate()} – ${MONTH_NAMES[days[4].getMonth()]} ${days[4].getDate()}`;
 
-      // Index appointments by "YYYY-MM-DDTHH"
       const apptMap = {};
-      appointments.forEach(a => {
-        const key = a.datetime.slice(0,13);
-        apptMap[key] = a;
-      });
+      appointments.forEach(a => { apptMap[a.datetime.slice(0,13)] = a; });
 
-      // Header row
       const head = document.getElementById('cal-head');
-      let headerRow = '<tr><th style="width:80px;padding:8px;font-size:12px;color:var(--text-muted);font-weight:600;text-align:left;">Time</th>';
+      let headerRow = '<tr><th style="width:70px;padding:8px;font-size:12px;color:var(--text-muted);font-weight:600;text-align:left;">Time</th>';
       days.forEach((d, i) => {
         const isToday = d.getTime() === today.getTime();
-        headerRow += `<th style="padding:8px 6px;font-size:12px;font-weight:600;text-align:center;
-          ${isToday ? 'color:var(--brand-teal);' : 'color:var(--text-secondary);'}">
+        headerRow += `<th style="padding:8px 6px;font-size:12px;font-weight:600;text-align:center;${isToday ? 'color:var(--brand-teal);' : 'color:var(--text-secondary);'}">
           ${DAY_NAMES[i]}<br><span style="font-size:14px;font-weight:700;">${d.getDate()}</span>
         </th>`;
       });
-      headerRow += '</tr>';
-      head.innerHTML = headerRow;
+      head.innerHTML = headerRow + '</tr>';
 
-      // Body rows
       const body = document.getElementById('cal-body');
       let html = '';
       HOURS.forEach(h => {
         html += `<tr>`;
-        html += `<td style="padding:6px 8px;font-size:12px;color:var(--text-muted);white-space:nowrap;border-top:1px solid var(--border);">${fmtHour(h)}</td>`;
+        html += `<td style="padding:6px 8px;font-size:12px;color:var(--text-muted);white-space:nowrap;border-top:1px solid var(--border);height:${CELL_HEIGHT};vertical-align:middle;">${fmtHour(h)}</td>`;
         days.forEach(d => {
           const key = `${isoDate(d)}T${String(h).padStart(2,'0')}`;
           const appt = apptMap[key];
+          const dateStr = isoDate(d);
           if (appt) {
-            const label = appt.patient_id
-              ? `${appt.patient_name} <span style="opacity:0.7;font-weight:400;">(${appt.patient_id})</span>`
-              : appt.patient_name;
-            html += `<td style="padding:4px 6px;border-top:1px solid var(--border);">
-              <div style="background:var(--brand-cyan);color:var(--brand-teal);border-radius:6px;
-                          padding:5px 8px;font-size:12px;font-weight:500;line-height:1.3;">
-                ${label}
+            const isPending = appt.status === 'pending';
+            const bg    = isPending ? '#fff8e1' : 'var(--brand-cyan)';
+            const color = isPending ? '#b45309' : 'var(--brand-teal)';
+            const badge = isPending ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700;">PENDING</span> ` : '';
+            const confirmBtn = isPending
+              ? `<button onclick="confirmAppt('${appt.id}')" title="Approve" style="background:#16a34a;color:white;border:none;border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;margin-right:2px;">✓</button>`
+              : '';
+            html += `<td style="padding:4px 6px;border-top:1px solid var(--border);height:${CELL_HEIGHT};vertical-align:top;min-width:110px;">
+              <div style="background:${bg};color:${color};border-radius:6px;padding:4px 7px;font-size:11px;font-weight:500;line-height:1.4;height:calc(${CELL_HEIGHT} - 14px);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;">
+                <div>${badge}${appt.patient_name}</div>
+                <div style="display:flex;gap:2px;margin-top:2px;">
+                  ${confirmBtn}
+                  <button onclick="openRescheduleModal('${appt.id}','${appt.patient_name.replace(/'/g,"\\'")}','${appt.datetime}')" title="Reschedule" style="background:rgba(0,0,0,0.1);color:inherit;border:none;border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;">✏</button>
+                  <button onclick="deleteAppt('${appt.id}')" title="Delete" style="background:rgba(220,38,38,0.15);color:#b91c1c;border:none;border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;">✕</button>
+                </div>
               </div>
             </td>`;
           } else {
-            html += `<td style="padding:4px 6px;border-top:1px solid var(--border);min-width:100px;"></td>`;
+            html += `<td onclick="openCalModal('${dateStr}',${h})" style="padding:4px 6px;border-top:1px solid var(--border);height:${CELL_HEIGHT};min-width:110px;cursor:pointer;transition:background 0.15s;"
+              onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background=''"></td>`;
           }
         });
         html += `</tr>`;
@@ -640,13 +694,165 @@
       body.innerHTML = html;
     }
 
-    const days = getWeekDates();
-    fetch(`/api/appointments?start=${isoDate(days[0])}&end=${isoDate(days[4])}`)
-      .then(r => r.json())
-      .then(buildCalendar)
-      .catch(() => buildCalendar([]));
+    function loadCalendar() {
+      const days = getWeekDates();
+      fetch(`/api/appointments?start=${isoDate(days[0])}&end=${isoDate(days[4])}`)
+        .then(r => r.json())
+        .then(buildCalendar)
+        .catch(() => buildCalendar([]));
+    }
+
+    // Modal logic
+    window.openCalModal = function(dateStr, hour) {
+      document.getElementById('calBookDate').value = dateStr;
+      document.getElementById('calBookHour').value = hour;
+      const d = new Date(dateStr + 'T00:00:00');
+      document.getElementById('calBookLabel').textContent =
+        `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${fmtHour(hour)}`;
+      document.getElementById('calBookError').style.display = 'none';
+      document.getElementById('calNewPatientFields').style.display = 'none';
+
+      const sel = document.getElementById('calPatientSel');
+      if (patientCache) {
+        populatePatientSelect(sel, patientCache);
+      } else {
+        sel.innerHTML = '<option value="">Loading…</option>';
+        fetch('/api/patients/list').then(r => r.json()).then(pts => {
+          patientCache = pts;
+          populatePatientSelect(sel, pts);
+        });
+      }
+      document.getElementById('calBookModal').style.display = 'flex';
+    };
+
+    function populatePatientSelect(sel, patients) {
+      let html = '<option value="">— Select patient —</option><option value="__new__">＋ Add New Patient</option>';
+      patients.forEach(p => { html += `<option value="${p.id}" data-name="${p.name}">${p.name}</option>`; });
+      sel.innerHTML = html;
+    }
+
+    window.calPatientChange = function() {
+      const val = document.getElementById('calPatientSel').value;
+      document.getElementById('calNewPatientFields').style.display = val === '__new__' ? 'block' : 'none';
+    };
+
+    window.closeCalModal = function() {
+      document.getElementById('calBookModal').style.display = 'none';
+    };
+
+    window.submitCalBook = function() {
+      const date = document.getElementById('calBookDate').value;
+      const hour = document.getElementById('calBookHour').value;
+      const sel  = document.getElementById('calPatientSel');
+      const errEl = document.getElementById('calBookError');
+      errEl.style.display = 'none';
+
+      const body = new FormData();
+      body.append('appt_date', date);
+      body.append('appt_hour', hour);
+      body.append('patient_sel', sel.value);
+
+      if (sel.value === '__new__') {
+        body.append('first_name', document.getElementById('calFirstName').value);
+        body.append('last_name',  document.getElementById('calLastName').value);
+        body.append('phone',      document.getElementById('calPhone').value);
+      } else if (sel.value) {
+        const opt = sel.options[sel.selectedIndex];
+        body.append('patient_name', opt.dataset.name);
+      } else {
+        errEl.textContent = 'Please select a patient.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      fetch('/api/quick-book', { method: 'POST', body })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+          patientCache = null; // refresh cache next open
+          closeCalModal();
+          loadCalendar();
+          showToast(`Appointment booked for ${data.patient_name}`);
+        })
+        .catch(() => { errEl.textContent = 'Something went wrong.'; errEl.style.display = 'block'; });
+    };
+
+    // Confirm / delete / reschedule
+    window.confirmAppt = function(id) {
+      fetch(`/api/appointments/${id}/confirm`, { method: 'POST' })
+        .then(r => r.json()).then(d => { if (d.ok) { loadCalendar(); showToast('Appointment confirmed!'); } });
+    };
+
+    window.deleteAppt = function(id) {
+      if (!confirm('Delete this appointment?')) return;
+      fetch(`/api/appointments/${id}/delete`, { method: 'POST' })
+        .then(r => r.json()).then(d => { if (d.ok) { loadCalendar(); showToast('Appointment deleted.'); } });
+    };
+
+    window.openRescheduleModal = function(id, name, dtStr) {
+      document.getElementById('rsApptId').value   = id;
+      document.getElementById('rsApptName').textContent = name;
+      document.getElementById('rsError').style.display = 'none';
+      const d = new Date(dtStr);
+      document.getElementById('rsDate').value = isoDate(d);
+      document.getElementById('rsHour').value = String(d.getHours());
+      document.getElementById('rsModal').style.display = 'flex';
+    };
+
+    window.closeRsModal = function() {
+      document.getElementById('rsModal').style.display = 'none';
+    };
+
+    window.submitReschedule = function() {
+      const id   = document.getElementById('rsApptId').value;
+      const date = document.getElementById('rsDate').value;
+      const hour = document.getElementById('rsHour').value;
+      const errEl = document.getElementById('rsError');
+      const body = new FormData();
+      body.append('appt_date', date);
+      body.append('appt_hour', hour);
+      fetch(`/api/appointments/${id}/reschedule`, { method: 'POST', body })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
+          closeRsModal(); loadCalendar(); showToast('Appointment rescheduled.');
+        });
+    };
+
+    loadCalendar();
   })();
   </script>
+
+  <!-- Reschedule modal -->
+  <div id="rsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:32px 36px;max-width:380px;width:90%;box-shadow:var(--shadow-lg);">
+      <h3 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brand-deep);margin-bottom:4px;">Reschedule Appointment</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Patient: <strong id="rsApptName"></strong></p>
+      <input type="hidden" id="rsApptId">
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">New Date</label>
+        <input type="date" id="rsDate" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-secondary);margin-bottom:6px;">New Time</label>
+        <select id="rsHour" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+          <option value="9">9:00 AM</option>
+          <option value="10">10:00 AM</option>
+          <option value="11">11:00 AM</option>
+          <option value="12">12:00 PM</option>
+          <option value="13">1:00 PM</option>
+          <option value="14">2:00 PM</option>
+          <option value="15">3:00 PM</option>
+          <option value="16">4:00 PM</option>
+        </select>
+      </div>
+      <div id="rsError" style="display:none;color:var(--error,#c62828);font-size:13px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="submitReschedule()" style="flex:1;padding:10px;background:var(--brand-blue);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Save</button>
+        <button onclick="closeRsModal()" style="padding:10px 18px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -300,6 +300,52 @@ followup = "Hi " + followup_raw if not followup_raw.lower().startswith("hi") els
 full_summary = f"PATIENT SUMMARY:\n{patient_summary}\n\nCLINICAL SUMMARY:\n{clinical_summary}"
 
 # ========================
+# STEP 4b: EXTRACT FOLLOW-UP DATE → PENDING APPOINTMENT
+# ========================
+try:
+    followup_date_prompt = (
+        "<|system|>You are a date extraction tool. Extract any follow-up appointment date from "
+        "clinical notes. Output ONLY an ISO 8601 datetime string like 2026-05-10T09:00:00, "
+        "using 09:00:00 as default time if no time is specified. "
+        "If no follow-up date is mentioned output the single word: none<|end|>\n"
+        f"<|user|>Extract the follow-up date from these clinical notes:\n{clinical_summary}<|end|>\n"
+        "<|assistant|>"
+    )
+    followup_date_raw = model.generate_text(
+        prompt=followup_date_prompt,
+        params={"max_new_tokens": 30, "temperature": 0.0, "stop_sequences": ["<|user|>", "<|system|>"]}
+    ).strip()
+
+    if followup_date_raw.lower() != 'none' and 'T' in followup_date_raw:
+        from appointments import add_followup_pending
+        from datetime import datetime as _dt
+        followup_dt = _dt.fromisoformat(followup_date_raw[:19])
+        if followup_dt > _dt.now():
+            # Get patient info for this visit
+            _patient_name = "Patient"
+            _patient_id = ""
+            try:
+                _cur = get_cursor()
+                _cur.execute(f"SELECT content FROM visit_artifacts WHERE visit_id='{visit_id}' AND artifact_type='patient_id' LIMIT 1")
+                _pid_row = _cur.fetchone()
+                if _pid_row:
+                    _patient_id = _pid_row[0]
+                    _cur.execute(f"SELECT first_name, last_name FROM patients WHERE patient_id='{_patient_id}' LIMIT 1")
+                    _pname_row = _cur.fetchone()
+                    if _pname_row:
+                        _patient_name = f"{_pname_row[0]} {_pname_row[1]}".strip()
+            except Exception:
+                pass
+            add_followup_pending(followup_dt, _patient_name, _patient_id, visit_id)
+            print(f"Pending follow-up appointment created for {followup_date_raw}")
+        else:
+            print("Follow-up date found but is in the past — skipping.")
+    else:
+        print("No follow-up date found in clinical notes.")
+except Exception as e:
+    print(f"Follow-up date extraction skipped: {e}")
+
+# ========================
 # STEP 5: SAVE TO DATABASE
 # ========================
 def safe(text):

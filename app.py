@@ -888,6 +888,9 @@ def book_appointment_manual():
         return redirect(redirect_to)
     try:
         dt = datetime.fromisoformat(f"{appt_date}T{appt_hour.zfill(2)}:00:00")
+        if dt < datetime.now():
+            flash("Appointment must be in the future.")
+            return redirect(redirect_to)
         book_appointment(dt, patient_name, "", "manual", patient_id=patient_id)
         flash(f"Appointment booked for {patient_name}!")
     except Exception as e:
@@ -994,6 +997,98 @@ def patients_schema():
         return jsonify({"columns": [{"name": c[0], "type": c[1]} for c in cols]})
     except Exception as e:
         return jsonify({"error": str(e)})
+
+@app.route("/api/appointments/<appt_id>/confirm", methods=["POST"])
+@staff_required
+def confirm_appt(appt_id):
+    from appointments import confirm_appointment
+    confirm_appointment(appt_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/appointments/<appt_id>/delete", methods=["POST"])
+@staff_required
+def delete_appt(appt_id):
+    from appointments import delete_appointment
+    delete_appointment(appt_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/appointments/<appt_id>/reschedule", methods=["POST"])
+@staff_required
+def reschedule_appt(appt_id):
+    from appointments import reschedule_appointment
+    appt_date = request.form.get("appt_date", "").strip()
+    appt_hour = request.form.get("appt_hour", "").strip()
+    if not appt_date or not appt_hour:
+        return jsonify({"error": "Missing date or time"}), 400
+    try:
+        new_dt = datetime.fromisoformat(f"{appt_date}T{appt_hour.zfill(2)}:00:00")
+        if new_dt < datetime.now():
+            return jsonify({"error": "Date must be in the future"}), 400
+        reschedule_appointment(appt_id, new_dt)
+        return jsonify({"ok": True})
+    except ValueError:
+        return jsonify({"error": "Invalid date/time"}), 400
+
+
+@app.route("/api/patients/list")
+@staff_required
+def patients_list():
+    try:
+        cursor = get_cursor()
+        cursor.execute("SELECT patient_id, first_name, last_name FROM patients ORDER BY last_name ASC")
+        rows = cursor.fetchall()
+        return jsonify([{"id": r[0], "name": f"{r[1]} {r[2]}"} for r in rows])
+    except Exception as e:
+        return jsonify([])
+
+
+@app.route("/api/quick-book", methods=["POST"])
+@staff_required
+def quick_book():
+    appt_date   = request.form.get("appt_date", "").strip()
+    appt_hour   = request.form.get("appt_hour", "").strip()
+    patient_sel = request.form.get("patient_sel", "").strip()
+    first_name  = safe_sql(request.form.get("first_name", "").strip())
+    last_name   = safe_sql(request.form.get("last_name", "").strip())
+    phone       = safe_sql(request.form.get("phone", "").strip())
+
+    if not appt_date or not appt_hour:
+        return jsonify({"error": "Missing date or time"}), 400
+
+    try:
+        dt = datetime.fromisoformat(f"{appt_date}T{appt_hour.zfill(2)}:00:00")
+        if dt < datetime.now():
+            return jsonify({"error": "Appointment must be in the future"}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid date/time"}), 400
+
+    if patient_sel == "__new__":
+        if not first_name or not last_name:
+            return jsonify({"error": "First and last name required"}), 400
+        patient_id = "P_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        pin = str(random.randint(100000, 999999))
+        try:
+            cursor = get_cursor()
+            cursor.execute(f"""
+                INSERT INTO patients (patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix)
+                VALUES ('{patient_id}', '{first_name}', '{last_name}', NULL, '', '{phone}', '', '', '{pin}', '', '', '', '', '')
+            """)
+            cursor.fetchall()
+        except Exception as e:
+            return jsonify({"error": f"Could not create patient: {str(e)}"}), 500
+        patient_name = f"{first_name} {last_name}"
+    else:
+        patient_id   = patient_sel
+        patient_name = request.form.get("patient_name", patient_id)
+
+    try:
+        book_appointment(dt, patient_name, "", "manual", patient_id=patient_id)
+        return jsonify({"ok": True, "patient_name": patient_name})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
