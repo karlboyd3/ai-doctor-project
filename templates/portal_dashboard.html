@@ -145,6 +145,7 @@
     </div>
     <div class="nav-right">
       <span>👤 {{ session.patient_name }}</span>
+      <a href="/portal/messages">💬 Messages</a>
       <a href="/portal/logout">Sign out</a>
     </div>
   </nav>
@@ -184,6 +185,45 @@
       {% endif %}
     </div>
     {% endif %}
+
+    <!-- Refill Request -->
+    <div style="background:white;border-radius:14px;border:1px solid #d0dce8;padding:22px 24px;margin-bottom:24px;box-shadow:0 1px 6px rgba(10,37,64,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-weight:600;font-size:15px;color:#0a2540;margin-bottom:3px;">💊 Request a Prescription Refill</div>
+          <div style="font-size:13px;color:#8aa0b8;">Send a refill request directly to your care team.</div>
+        </div>
+        <button onclick="document.getElementById('refillModal').style.display='flex'"
+                style="background:#e0f7fa;color:#00838f;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          Request Refill →
+        </button>
+      </div>
+    </div>
+
+    <!-- Refill Modal -->
+    <div id="refillModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:18px;padding:32px 36px;max-width:420px;width:90%;box-shadow:0 12px 40px rgba(10,37,64,0.18);">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:22px;color:#0a2540;margin-bottom:6px;">Request a Refill</h3>
+        <p style="font-size:13px;color:#8aa0b8;margin-bottom:22px;">Your care team will review your request.</p>
+        <form action="/portal/refill/request" method="POST">
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:#4a6080;margin-bottom:6px;">Medication Name *</label>
+            <input type="text" name="medication" required placeholder="e.g. Lisinopril 10mg"
+                   style="width:100%;padding:10px 14px;border:1px solid #d0dce8;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:#4a6080;margin-bottom:6px;">Reason / Notes (optional)</label>
+            <textarea name="reason" rows="3" placeholder="Running low, last refill was…"
+                      style="width:100%;padding:10px 14px;border:1px solid #d0dce8;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button type="submit" style="flex:1;padding:11px;background:#00838f;color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Submit Request</button>
+            <button type="button" onclick="document.getElementById('refillModal').style.display='none'"
+                    style="padding:11px 18px;background:none;border:1px solid #d0dce8;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="section-title">Your Visits</div>
 

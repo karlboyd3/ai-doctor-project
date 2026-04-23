@@ -266,6 +266,44 @@
   {% endif %}
 </div>
 
+<!-- Vitals Trend Chart -->
+<div id="vitalsSection" style="display:none;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;margin-bottom:24px;box-shadow:var(--shadow-sm);">
+  <h3 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brand-deep);margin-bottom:4px;">📊 Vitals Trends</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Extracted from visit clinical notes</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <canvas id="chartBP" height="160"></canvas>
+    <canvas id="chartHR" height="160"></canvas>
+  </div>
+</div>
+
+<!-- Messages -->
+<div style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;margin-bottom:24px;box-shadow:var(--shadow-sm);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <h3 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brand-deep);margin-bottom:2px;">💬 Secure Messages</h3>
+      <p style="font-size:13px;color:var(--text-muted);">Patient-staff message thread</p>
+    </div>
+  </div>
+  <div id="msgThread" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;padding:4px 0;">
+    <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Loading messages…</div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <input id="msgInput" type="text" placeholder="Type a reply…"
+           style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+    <button onclick="sendStaffMessage('{{ patient[0] }}')"
+            style="padding:10px 20px;background:var(--brand-teal);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Send</button>
+  </div>
+</div>
+
+<!-- Refill Requests -->
+<div style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;margin-bottom:24px;box-shadow:var(--shadow-sm);">
+  <h3 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brand-deep);margin-bottom:4px;">💊 Refill Requests</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Prescription refill requests from this patient</p>
+  <div id="refillList">
+    <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Loading…</div>
+  </div>
+</div>
+
 <div class="visits-section">
   <div class="visits-section-header">
     <h3>Visit History</h3>
@@ -451,11 +489,138 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('open');
   });
 });
+
+// ── Vitals chart ──────────────────────────────────────────
+fetch('/api/patient/{{ patient[0] }}/vitals')
+  .then(r => r.json())
+  .then(data => {
+    if (!data.length) return;
+    document.getElementById('vitalsSection').style.display = 'block';
+    const labels = data.map(d => d.date || d.visit_id);
+    const bpS    = data.map(d => d.bp_systolic);
+    const bpD    = data.map(d => d.bp_diastolic);
+    const hr     = data.map(d => d.heart_rate);
+    new Chart(document.getElementById('chartBP'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {label:'Systolic (mmHg)', data:bpS, borderColor:'#c62828', backgroundColor:'rgba(198,40,40,0.08)', tension:0.3, pointRadius:5},
+          {label:'Diastolic (mmHg)',data:bpD, borderColor:'#1565c0', backgroundColor:'rgba(21,101,192,0.08)', tension:0.3, pointRadius:5}
+        ]
+      },
+      options:{plugins:{title:{display:true,text:'Blood Pressure',font:{size:13}}},scales:{y:{beginAtZero:false}}}
+    });
+    new Chart(document.getElementById('chartHR'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets:[{label:'Heart Rate (bpm)',data:hr,borderColor:'#00838f',backgroundColor:'rgba(0,131,143,0.08)',tension:0.3,pointRadius:5}]
+      },
+      options:{plugins:{title:{display:true,text:'Heart Rate',font:{size:13}}},scales:{y:{beginAtZero:false}}}
+    });
+  });
+
+// ── Messages ─────────────────────────────────────────────
+function loadMessages() {
+  fetch('/api/patient/{{ patient[0] }}/messages')
+    .then(r => r.json())
+    .then(msgs => {
+      const thread = document.getElementById('msgThread');
+      if (!msgs.length) {
+        thread.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No messages yet.</div>';
+        return;
+      }
+      thread.innerHTML = msgs.map(m => {
+        const isStaff = m.type === 'msg_staff';
+        const bg    = isStaff ? 'var(--brand-cyan)' : '#f0f6fb';
+        const align = isStaff ? 'flex-end' : 'flex-start';
+        const label = isStaff ? 'Care Team' : 'Patient';
+        const ts    = m.ts ? m.ts.slice(0,16).replace('T',' ') : '';
+        return `<div style="display:flex;flex-direction:column;align-items:${align};">
+          <div style="max-width:75%;background:${bg};border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.5;">
+            <div style="font-weight:600;font-size:11px;color:var(--text-muted);margin-bottom:3px;">${label} · ${ts}</div>
+            ${m.content}
+          </div>
+        </div>`;
+      }).join('');
+      thread.scrollTop = thread.scrollHeight;
+    });
+}
+loadMessages();
+
+function sendStaffMessage(patientId) {
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  fetch(`/api/patient/${patientId}/messages/reply`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({text})
+  }).then(r => r.json()).then(d => {
+    if (d.success) { input.value = ''; loadMessages(); }
+    else showToast('Error sending message');
+  });
+}
+document.getElementById('msgInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') sendStaffMessage('{{ patient[0] }}');
+});
+
+// ── Refill requests ───────────────────────────────────────
+function loadRefills() {
+  fetch('/api/patient/{{ patient[0] }}/refills')
+    .then(r => r.json())
+    .then(refills => {
+      const el = document.getElementById('refillList');
+      if (!refills.length) {
+        el.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No refill requests.</div>';
+        return;
+      }
+      const statusColor = {pending:'#b45309', approved:'#2e7d32', denied:'#c62828'};
+      const statusBg    = {pending:'#fef3c7', approved:'#e8f5e9', denied:'#ffebee'};
+      el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+        '<thead><tr style="border-bottom:2px solid var(--border);">' +
+        '<th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Medication</th>' +
+        '<th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Reason</th>' +
+        '<th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Date</th>' +
+        '<th style="padding:8px 12px;text-align:left;color:var(--text-muted);font-weight:600;">Status</th>' +
+        '<th style="padding:8px 12px;"></th></tr></thead><tbody>' +
+        refills.map(r => {
+          const sc = statusColor[r.status] || '#555';
+          const sb = statusBg[r.status] || '#f5f5f5';
+          const ts = (r.requested_at || r.created_at || '').slice(0,10);
+          const actions = r.status === 'pending'
+            ? `<button onclick="updateRefill('${r.refill_id}','approved')" style="background:#e8f5e9;color:#2e7d32;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;margin-right:4px;">✓ Approve</button>
+               <button onclick="updateRefill('${r.refill_id}','denied')"   style="background:#ffebee;color:#c62828;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;">✕ Deny</button>`
+            : '';
+          return `<tr style="border-bottom:1px solid var(--surface-3);">
+            <td style="padding:10px 12px;font-weight:500;">${r.medication}</td>
+            <td style="padding:10px 12px;color:var(--text-muted);">${r.reason || '—'}</td>
+            <td style="padding:10px 12px;color:var(--text-muted);">${ts}</td>
+            <td style="padding:10px 12px;"><span style="background:${sb};color:${sc};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">${r.status}</span></td>
+            <td style="padding:10px 12px;">${actions}</td>
+          </tr>`;
+        }).join('') + '</tbody></table>';
+    });
+}
+loadRefills();
+
+function updateRefill(refillId, status) {
+  fetch(`/api/refill/${refillId}/update`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  }).then(r => r.json()).then(d => {
+    if (d.success) { loadRefills(); showToast(`Refill ${status}.`); }
+    else showToast('Error: ' + d.error);
+  });
+}
 </script>
 {% endblock %}

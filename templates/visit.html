@@ -346,6 +346,7 @@
       <button class="copy-btn" onclick="copyText('content-summary',this)">⎘ Copy</button>
       <button class="copy-btn" onclick="document.getElementById('smsModal').classList.add('open')">📱 Send SMS</button>
       <button class="copy-btn" onclick="openEmail('summary')">✉ Send Email</button>
+      <a class="copy-btn" href="/api/visit/{{ visit_id }}/pdf/summary" download>⬇ PDF</a>
       <button class="copy-btn" id="edit-btn-summary" onclick="startEdit('summary')">✏ Edit</button>
       <button class="copy-btn save-btn" id="save-btn-summary" style="display:none" onclick="saveEdit('{{ visit_id }}','summary')">✓ Save</button>
       <button class="copy-btn" id="cancel-btn-summary" style="display:none" onclick="cancelEdit('summary')">✕ Cancel</button>
@@ -448,6 +449,86 @@
     </div>
   </div>
 
+  {% elif artifact_type == 'icd_codes' %}
+  <div class="artifact-card" data-type="icd_codes" style="border-top:3px solid var(--brand-blue);">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon" style="background:var(--info-lt);">🏷</div>
+        <div>
+          <div class="artifact-title">ICD-10 Codes</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-info">AI Coded</span>
+    </div>
+    <div class="artifact-body">
+      <pre id="content-icd_codes" style="font-family:'DM Sans',sans-serif;font-size:14px;line-height:2;">{{ content }}</pre>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-icd_codes',this)">⎘ Copy</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'med_safety' %}
+  <div class="artifact-card" data-type="med_safety" style="border-top:3px solid var(--accent-warm);">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon" style="background:var(--warning-lt);">⚠</div>
+        <div>
+          <div class="artifact-title">Medication Safety Check</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge badge-warning">AI Safety Review</span>
+    </div>
+    <div class="artifact-body">
+      <pre id="content-med_safety">{{ content }}</pre>
+    </div>
+    <div class="artifact-footer">
+      <button class="copy-btn" onclick="copyText('content-med_safety',this)">⎘ Copy</button>
+    </div>
+  </div>
+
+  {% elif artifact_type == 'vitals' %}
+  <div class="artifact-card" data-type="vitals" style="border-top:3px solid var(--brand-teal);">
+    <div class="artifact-header">
+      <div class="artifact-header-left">
+        <div class="artifact-icon" style="background:var(--brand-cyan);">📊</div>
+        <div>
+          <div class="artifact-title">Vitals (Structured)</div>
+          <div class="artifact-subtitle">{{ created_at }}</div>
+        </div>
+      </div>
+      <span class="badge" style="background:var(--brand-cyan);color:var(--brand-teal);">Extracted</span>
+    </div>
+    <div class="artifact-body">
+      {% set v = content | from_json if content else {} %}
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        {% set labels = [('bp_systolic','BP Systolic','mmHg'),('bp_diastolic','BP Diastolic','mmHg'),('heart_rate','Heart Rate','bpm'),('temperature_f','Temperature','°F'),('weight_lbs','Weight','lbs'),('spo2_pct','SpO₂','%')] %}
+        {% for key, label, unit in labels %}
+        <tr style="border-bottom:1px solid var(--surface-3);">
+          <td style="padding:8px 12px;color:var(--text-muted);font-weight:500;width:50%;">{{ label }}</td>
+          <td style="padding:8px 12px;font-weight:600;color:var(--brand-deep);" id="vit-{{ key }}">{{ content }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <pre id="content-vitals" style="display:none;">{{ content }}</pre>
+    </div>
+  </div>
+  <script>
+  (function(){
+    try {
+      var v = JSON.parse(document.getElementById('content-vitals').textContent);
+      var map = {bp_systolic:'vit-bp_systolic',bp_diastolic:'vit-bp_diastolic',heart_rate:'vit-heart_rate',temperature_f:'vit-temperature_f',weight_lbs:'vit-weight_lbs',spo2_pct:'vit-spo2_pct'};
+      var units = {bp_systolic:'mmHg',bp_diastolic:'mmHg',heart_rate:'bpm',temperature_f:'°F',weight_lbs:'lbs',spo2_pct:'%'};
+      for(var k in map){
+        var el = document.getElementById(map[k]);
+        if(el) el.textContent = (v[k] != null) ? v[k]+' '+units[k] : '—';
+      }
+    } catch(e){}
+  })();
+  </script>
+
   {% elif artifact_type in ('soap_note','referral_letter','sick_note','prescription_summary','discharge_instructions') %}
   {% set pw_icons = {'soap_note':'🩺','referral_letter':'📬','sick_note':'📋','prescription_summary':'💊','discharge_instructions':'📄'} %}
   {% set pw_labels = {'soap_note':'SOAP Note','referral_letter':'Referral Letter','sick_note':'Sick / Leave Certificate','prescription_summary':'Prescription Summary','discharge_instructions':'Discharge Instructions'} %}
@@ -469,6 +550,7 @@
     <div class="artifact-footer">
       <button class="copy-btn" onclick="copyText('content-{{ artifact_type }}',this)">⎘ Copy</button>
       <button class="copy-btn" onclick="openEmail('{{ artifact_type }}')">✉ Send Email</button>
+      <a class="copy-btn" href="/api/visit/{{ visit_id }}/pdf/{{ artifact_type }}" download>⬇ PDF</a>
       <button class="copy-btn" onclick="window.print()">⎙ Print</button>
       <button class="copy-btn" id="edit-btn-{{ artifact_type }}" onclick="startEdit('{{ artifact_type }}')">✏ Edit</button>
       <button class="copy-btn save-btn" id="save-btn-{{ artifact_type }}" style="display:none" onclick="saveEdit('{{ visit_id }}','{{ artifact_type }}')">✓ Save</button>

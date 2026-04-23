@@ -135,6 +135,7 @@ print(f"Processing visit: {visit_id}")
 # STEP 1b: PATIENT HISTORY
 # ========================
 prior_history = ""
+current_medications_on_file = ""
 try:
     cursor = get_cursor()
     cursor.execute(f"""
@@ -175,6 +176,14 @@ try:
             print(f"Found {len(prior_summaries)} prior visit(s) — injecting history context.")
         else:
             print("No prior visit summaries found for this patient.")
+
+        # Fetch current medications for medication safety check
+        try:
+            cursor.execute(f"SELECT current_medications FROM patients WHERE patient_id = '{linked_patient_id}' LIMIT 1")
+            med_row = cursor.fetchone()
+            current_medications_on_file = (med_row[0] or '').strip() if med_row else ''
+        except Exception:
+            pass
     else:
         print("Visit not linked to a patient — running without history context.")
 except Exception as e:
@@ -264,6 +273,80 @@ if clinical_issues:
     print(f"Clinical validator flagged {len(clinical_issues)} issue(s) — applied corrections.")
 else:
     print("Clinical validator: output looks clean.")
+
+# ========================
+# STEP 3b: ICD-10 CODE EXTRACTION
+# ========================
+icd_codes = ""
+try:
+    print("Extracting ICD-10 codes...")
+    icd_prompt = (
+        "<|system|>You are a medical coder. Extract the 2-4 most relevant ICD-10-CM codes "
+        "from the clinical notes. Format each code on its own line as: CODE – Description "
+        "(example: J06.9 – Acute upper respiratory infection, unspecified). "
+        "Only include codes directly supported by the notes. "
+        "Output only the code list, nothing else.<|end|>\n"
+        f"<|user|>Extract ICD-10 codes from these clinical notes:\n{clinical_summary}<|end|>\n"
+        "<|assistant|>"
+    )
+    icd_codes = model.generate_text(
+        prompt=icd_prompt,
+        params={"max_new_tokens": 120, "temperature": 0.0, "stop_sequences": ["<|user|>", "<|system|>"]}
+    ).strip()
+    print(f"ICD-10: {icd_codes[:80]}")
+except Exception as e:
+    print(f"ICD-10 extraction skipped: {e}")
+
+# ========================
+# STEP 3c: STRUCTURED VITALS EXTRACTION
+# ========================
+vitals_json = ""
+try:
+    print("Extracting structured vitals...")
+    import json as _json
+    vitals_prompt = (
+        "<|system|>You are a data extraction tool. Extract vitals from clinical notes as JSON. "
+        "Use exactly these keys: bp_systolic, bp_diastolic, heart_rate, temperature_f, weight_lbs, spo2_pct. "
+        "Use null for any vital not mentioned. Numbers only (no units). "
+        "Output ONLY a valid JSON object, nothing else.<|end|>\n"
+        f"<|user|>Extract vitals from these clinical notes:\n{clinical_summary}<|end|>\n"
+        "<|assistant|>{{"
+    )
+    raw_v = "{" + model.generate_text(
+        prompt=vitals_prompt,
+        params={"max_new_tokens": 80, "temperature": 0.0, "stop_sequences": ["<|user|>", "<|system|>", "\n\n"]}
+    ).strip()
+    _json.loads(raw_v)  # validate parseable JSON before storing
+    vitals_json = raw_v
+    print(f"Vitals: {vitals_json}")
+except Exception as e:
+    print(f"Vitals extraction skipped: {e}")
+
+# ========================
+# STEP 3d: MEDICATION SAFETY CHECK
+# ========================
+med_safety = ""
+if current_medications_on_file:
+    try:
+        print("Running medication safety check...")
+        med_safety_prompt = (
+            "<|system|>You are a clinical pharmacist performing a medication safety review. "
+            "Compare medications prescribed in today's visit against the patient's existing medications on file. "
+            "Check for: duplicate medications, drug-drug interactions, contraindications. "
+            "For each prescribed medication state SAFE, CAUTION, or FLAG and explain briefly. "
+            "If no new medications were prescribed, state that clearly. "
+            "Maximum 120 words. Clinical language only. Format as a short bulleted list.<|end|>\n"
+            f"<|user|>Patient's medications on file: {current_medications_on_file}\n\n"
+            f"Today's clinical notes (check prescribed medications section):\n{clinical_summary}<|end|>\n"
+            "<|assistant|>"
+        )
+        med_safety = model.generate_text(
+            prompt=med_safety_prompt,
+            params={"max_new_tokens": 180, "temperature": 0.1, "stop_sequences": ["<|user|>", "<|system|>"]}
+        ).strip()
+        print("Medication safety check complete.")
+    except Exception as e:
+        print(f"Medication safety check skipped: {e}")
 
 # ========================
 # STEP 4: FOLLOW-UP
@@ -382,6 +465,47 @@ else:
     """)
     cursor.fetchall()
     print("Saved to database.")
+
+# Save ICD codes, vitals, med safety (each checked independently so re-runs are safe)
+cursor = get_cursor()
+if icd_codes:
+    cursor.execute(f"SELECT COUNT(*) FROM visit_artifacts WHERE visit_id='{visit_id}' AND artifact_type='icd_codes'")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                'A_ICD_{visit_id}', '{visit_id}', 'icd_codes',
+                '{safe(icd_codes)}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+        print("ICD codes saved.")
+
+if vitals_json:
+    cursor.execute(f"SELECT COUNT(*) FROM visit_artifacts WHERE visit_id='{visit_id}' AND artifact_type='vitals'")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                'A_VIT_{visit_id}', '{visit_id}', 'vitals',
+                '{safe(vitals_json)}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+        print("Vitals saved.")
+
+if med_safety:
+    cursor.execute(f"SELECT COUNT(*) FROM visit_artifacts WHERE visit_id='{visit_id}' AND artifact_type='med_safety'")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                'A_MEDSAFE_{visit_id}', '{visit_id}', 'med_safety',
+                '{safe(med_safety)}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+        print("Medication safety record saved.")
 
 # ========================
 # STEP 6: SPANISH TRANSLATION (if patient prefers Spanish)

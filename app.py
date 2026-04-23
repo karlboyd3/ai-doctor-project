@@ -1,11 +1,13 @@
 import os
+import json
 import random
 import subprocess
 from datetime import datetime
 from functools import wraps
-from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session
+from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, session, send_file
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+import audit
 
 load_dotenv()
 
@@ -169,6 +171,7 @@ def visits():
 @app.route("/visit/<path:visit_id>")
 @staff_required
 def visit_detail(visit_id):
+    audit.log('view', 'visit', visit_id)
     artifacts = []
     patient = None
     try:
@@ -268,6 +271,7 @@ def run_pipeline_api():
 @app.route("/send-email/<path:visit_id>", methods=["POST"])
 @staff_required
 def send_email(visit_id):
+    audit.log('send_email', 'visit', visit_id)
     email = request.form.get("email", "").strip()
     artifact_type = request.form.get("artifact_type", "summary")
 
@@ -313,7 +317,7 @@ def send_email(visit_id):
 @app.route("/send-sms/<path:visit_id>", methods=["POST"])
 @staff_required
 def send_sms(visit_id):
-    """Send SMS for a specific visit."""
+    audit.log('send_sms', 'visit', visit_id)
     phone = request.form.get("phone")
     message_type = request.form.get("message_type", "patient_summary")
 
@@ -562,6 +566,7 @@ def new_patient():
 @app.route("/patient/<patient_id>")
 @staff_required
 def patient_detail(patient_id):
+    audit.log('view', 'patient', patient_id)
     try:
         cursor = get_cursor()
         cursor.execute(f"""
@@ -585,6 +590,7 @@ def patient_detail(patient_id):
 @app.route("/patient/<patient_id>/edit", methods=["POST"])
 @staff_required
 def edit_patient(patient_id):
+    audit.log('edit', 'patient', patient_id)
     first_name  = safe_sql(request.form.get("first_name", ""))
     last_name   = safe_sql(request.form.get("last_name", ""))
     suffix      = safe_sql(request.form.get("suffix", ""))
@@ -780,6 +786,7 @@ def portal_logout():
 @app.route("/visit/<path:visit_id>/delete", methods=["POST"])
 @staff_required
 def delete_visit(visit_id):
+    audit.log('delete', 'visit', visit_id)
     try:
         cursor = get_cursor()
         cursor.execute(f"DELETE FROM visit_artifacts WHERE visit_id = '{safe_sql(visit_id)}'")
@@ -792,6 +799,7 @@ def delete_visit(visit_id):
 @app.route("/patient/<patient_id>/delete", methods=["POST"])
 @staff_required
 def delete_patient(patient_id):
+    audit.log('delete', 'patient', patient_id)
     try:
         cursor = get_cursor()
         cursor.execute(f"DELETE FROM patients WHERE patient_id = '{safe_sql(patient_id)}'")
@@ -1088,6 +1096,316 @@ def quick_book():
         return jsonify({"ok": True, "patient_name": patient_name})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── AUDIT LOG ─────────────────────────────────────────────
+
+@app.route("/audit")
+@staff_required
+def audit_log_page():
+    entries = audit.recent(200)
+    return render_template("audit.html", entries=entries)
+
+
+# ── PDF EXPORT ────────────────────────────────────────────
+
+@app.route("/api/visit/<path:visit_id>/pdf/<artifact_type>")
+@staff_required
+def export_pdf(visit_id, artifact_type):
+    allowed = {'summary', 'followup_message', 'soap_note', 'referral_letter',
+               'sick_note', 'prescription_summary', 'discharge_instructions'}
+    if artifact_type not in allowed:
+        return "Invalid artifact type", 400
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT content FROM visit_artifacts
+            WHERE visit_id = '{safe_sql(visit_id)}' AND artifact_type = '{safe_sql(artifact_type)}'
+            LIMIT 1
+        """)
+        row = cursor.fetchone()
+        if not row:
+            return "Not found", 404
+        content = row[0]
+
+        patient_name = ""
+        try:
+            cursor.execute(f"""
+                SELECT p.first_name, p.last_name FROM patients p
+                JOIN visit_artifacts va ON va.content = p.patient_id
+                WHERE va.visit_id = '{safe_sql(visit_id)}' AND va.artifact_type = 'patient_id' LIMIT 1
+            """)
+            pr = cursor.fetchone()
+            if pr:
+                patient_name = f"{pr[0] or ''} {pr[1] or ''}".strip()
+        except Exception:
+            pass
+
+        from reportlab.lib.pagesizes import LETTER
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.lib.colors import HexColor
+        import io
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=LETTER,
+                                leftMargin=inch, rightMargin=inch,
+                                topMargin=0.85*inch, bottomMargin=0.85*inch)
+        styles = getSampleStyleSheet()
+
+        label_map = {
+            'summary': 'Clinical Summary', 'followup_message': 'Follow-up Message',
+            'soap_note': 'SOAP Note', 'referral_letter': 'Referral Letter',
+            'sick_note': 'Medical Certificate', 'prescription_summary': 'Prescription Summary',
+            'discharge_instructions': 'Discharge Instructions'
+        }
+
+        brand   = HexColor('#0a2540')
+        teal    = HexColor('#00838f')
+        muted   = HexColor('#4a6080')
+        divider = HexColor('#d0dce8')
+
+        h1  = ParagraphStyle('h1',  fontName='Helvetica-Bold', fontSize=20, textColor=brand, spaceAfter=2)
+        h2  = ParagraphStyle('h2',  fontName='Helvetica-Bold', fontSize=14, textColor=teal,  spaceAfter=2)
+        sub = ParagraphStyle('sub', fontName='Helvetica',      fontSize=10, textColor=muted, spaceAfter=2)
+        bod = ParagraphStyle('bod', fontName='Courier',        fontSize=10, leading=14,      spaceAfter=4)
+
+        story = [
+            Paragraph("IntelliCare", h1),
+            Paragraph(label_map.get(artifact_type, artifact_type.replace('_', ' ').title()), h2),
+        ]
+        if patient_name:
+            story.append(Paragraph(f"Patient: {patient_name}", sub))
+        story.append(Paragraph(f"Visit: {visit_id}", sub))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%B %d, %Y')}", sub))
+        story.append(Spacer(1, 0.15*inch))
+        story.append(HRFlowable(width='100%', thickness=1, color=divider, spaceAfter=10))
+
+        for line in content.split('\n'):
+            safe_line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            story.append(Paragraph(safe_line or '&nbsp;', bod))
+
+        doc.build(story)
+        buf.seek(0)
+        audit.log('export_pdf', 'visit', visit_id)
+        return send_file(buf, mimetype='application/pdf', as_attachment=True,
+                         download_name=f"{visit_id}_{artifact_type}.pdf")
+    except ImportError:
+        return "PDF generation requires reportlab. Run: pip install reportlab", 500
+    except Exception as e:
+        return f"PDF error: {str(e)}", 500
+
+
+# ── PATIENT VITALS API ────────────────────────────────────
+
+@app.route("/api/patient/<patient_id>/vitals")
+@staff_required
+def patient_vitals_api(patient_id):
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT va.visit_id, va.content, va.created_at
+            FROM visit_artifacts va
+            WHERE va.artifact_type = 'vitals'
+            AND va.visit_id IN (
+                SELECT visit_id FROM visit_artifacts
+                WHERE artifact_type = 'patient_id' AND content = '{safe_sql(patient_id)}'
+            )
+            ORDER BY va.created_at ASC
+        """)
+        rows = cursor.fetchall()
+        result = []
+        for vid, content, ts in rows:
+            try:
+                v = json.loads(content)
+                v['visit_id'] = vid
+                v['date'] = str(ts)[:10] if ts else ''
+                result.append(v)
+            except Exception:
+                pass
+        return jsonify(result)
+    except Exception:
+        return jsonify([])
+
+
+# ── REFILL REQUESTS ───────────────────────────────────────
+
+@app.route("/portal/refill/request", methods=["POST"])
+@portal_required
+def portal_refill_request():
+    patient_id = session['patient_id']
+    medication  = safe_sql(request.form.get("medication", "").strip())
+    reason      = safe_sql(request.form.get("reason", "").strip())
+    if not medication:
+        flash("Please specify a medication.")
+        return redirect(url_for('portal_dashboard'))
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    refill_id = f"RFILL_{patient_id}_{ts}"
+    content = json.dumps({
+        "patient_id": patient_id,
+        "medication": medication,
+        "reason": reason,
+        "status": "pending",
+        "requested_at": datetime.now().isoformat()
+    })
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                'A_{safe_sql(refill_id)}', '{safe_sql(refill_id)}', 'refill_request',
+                '{safe_sql(content)}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+        flash("Refill request submitted successfully!")
+    except Exception as e:
+        flash(f"Error submitting request: {str(e)}")
+    return redirect(url_for('portal_dashboard'))
+
+
+@app.route("/api/patient/<patient_id>/refills")
+@staff_required
+def patient_refills_api(patient_id):
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT visit_id, content, created_at FROM visit_artifacts
+            WHERE artifact_type = 'refill_request'
+            AND content LIKE '%{safe_sql(patient_id)}%'
+            ORDER BY created_at DESC
+        """)
+        rows = cursor.fetchall()
+        result = []
+        for rid, content, ts in rows:
+            try:
+                data = json.loads(content)
+                data['refill_id'] = rid
+                data['created_at'] = str(ts)
+                result.append(data)
+            except Exception:
+                pass
+        return jsonify(result)
+    except Exception:
+        return jsonify([])
+
+
+@app.route("/api/refill/<path:refill_id>/update", methods=["POST"])
+@staff_required
+def update_refill(refill_id):
+    status = (request.json or {}).get("status", "")
+    if status not in ("approved", "denied"):
+        return jsonify({"success": False, "error": "Invalid status"})
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT content FROM visit_artifacts
+            WHERE visit_id = '{safe_sql(refill_id)}' AND artifact_type = 'refill_request' LIMIT 1
+        """)
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Not found"})
+        data = json.loads(row[0])
+        data['status'] = status
+        cursor.execute(f"""
+            UPDATE visit_artifacts SET content = '{safe_sql(json.dumps(data))}'
+            WHERE visit_id = '{safe_sql(refill_id)}' AND artifact_type = 'refill_request'
+        """)
+        cursor.fetchall()
+        audit.log(f'refill_{status}', 'refill', refill_id)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# ── SECURE MESSAGING ─────────────────────────────────────
+
+@app.route("/portal/messages")
+@portal_required
+def portal_messages():
+    patient_id = session['patient_id']
+    chat_id    = f"CHAT_{patient_id}"
+    messages   = []
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT artifact_type, content, created_at FROM visit_artifacts
+            WHERE visit_id = '{safe_sql(chat_id)}'
+            AND artifact_type IN ('msg_patient', 'msg_staff')
+            ORDER BY created_at ASC
+        """)
+        messages = cursor.fetchall()
+    except Exception as e:
+        print(f"Messages error: {e}")
+    return render_template("portal_messages.html", messages=messages,
+                           patient_name=session.get('patient_name', ''))
+
+
+@app.route("/portal/messages/send", methods=["POST"])
+@portal_required
+def portal_send_message():
+    patient_id = session['patient_id']
+    text       = safe_sql(request.form.get("text", "").strip())
+    if not text:
+        return redirect(url_for('portal_messages'))
+    chat_id = f"CHAT_{patient_id}"
+    msg_id  = f"A_MSG_{patient_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                '{safe_sql(msg_id)}', '{safe_sql(chat_id)}', 'msg_patient',
+                '{text}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+    except Exception as e:
+        print(f"Send message error: {e}")
+    return redirect(url_for('portal_messages'))
+
+
+@app.route("/api/patient/<patient_id>/messages")
+@staff_required
+def get_patient_messages(patient_id):
+    chat_id = f"CHAT_{patient_id}"
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            SELECT artifact_type, content, created_at FROM visit_artifacts
+            WHERE visit_id = '{safe_sql(chat_id)}'
+            AND artifact_type IN ('msg_patient', 'msg_staff')
+            ORDER BY created_at ASC
+        """)
+        rows = cursor.fetchall()
+        return jsonify([{"type": r[0], "content": r[1], "ts": str(r[2])} for r in rows])
+    except Exception:
+        return jsonify([])
+
+
+@app.route("/api/patient/<patient_id>/messages/reply", methods=["POST"])
+@staff_required
+def staff_reply_message(patient_id):
+    text    = safe_sql((request.json or {}).get("text", "").strip())
+    if not text:
+        return jsonify({"success": False, "error": "Empty message"})
+    chat_id = f"CHAT_{patient_id}"
+    msg_id  = f"A_STAFFMSG_{patient_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    try:
+        cursor = get_cursor()
+        cursor.execute(f"""
+            INSERT INTO visit_artifacts VALUES (
+                '{safe_sql(msg_id)}', '{safe_sql(chat_id)}', 'msg_staff',
+                '{text}',
+                CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+            )
+        """)
+        cursor.fetchall()
+        audit.log('send_message', 'patient', patient_id)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 if __name__ == "__main__":

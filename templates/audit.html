@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}IntelliCare — Audit Log{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span> <span>Audit Log</span>
+</div>
+
+<div style="background:linear-gradient(135deg,var(--brand-deep),var(--brand-blue));border-radius:var(--radius-xl);padding:36px 48px;color:white;margin-bottom:32px;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <h1 style="font-family:'DM Serif Display',serif;font-size:30px;margin-bottom:6px;">Audit Log</h1>
+    <p style="opacity:0.75;font-size:14px;">Staff access and activity trail — last 200 events</p>
+  </div>
+  <div style="font-size:40px;opacity:0.3;">🔐</div>
+</div>
+
+{% if entries %}
+<div style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-sm);">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead>
+      <tr style="background:var(--surface-2);border-bottom:2px solid var(--border);">
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">Timestamp</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">User</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">Action</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">Resource</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">ID</th>
+        <th style="padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);">IP</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ts, user, action, rtype, rid, ip in entries %}
+      {% set action_color = {
+        'delete': '#c62828',
+        'send_email': '#1565c0',
+        'send_sms': '#1565c0',
+        'send_message': '#00838f',
+        'export_pdf': '#6a1b9a',
+        'refill_approved': '#2e7d32',
+        'refill_denied': '#c62828',
+        'edit': '#e65100'
+      } %}
+      <tr style="border-bottom:1px solid var(--surface-3);">
+        <td style="padding:10px 16px;color:var(--text-muted);white-space:nowrap;">{{ ts[:19] if ts else '' }}</td>
+        <td style="padding:10px 16px;font-weight:500;">{{ user or '—' }}</td>
+        <td style="padding:10px 16px;">
+          <span style="background:var(--surface-2);color:{{ action_color.get(action, 'var(--text-secondary)') }};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">
+            {{ action or '—' }}
+          </span>
+        </td>
+        <td style="padding:10px 16px;color:var(--text-muted);">{{ rtype or '—' }}</td>
+        <td style="padding:10px 16px;font-family:monospace;font-size:12px;color:var(--brand-teal);">
+          {% if rtype == 'patient' and rid %}
+            <a href="/patient/{{ rid }}" style="color:var(--brand-teal);text-decoration:none;">{{ rid }}</a>
+          {% elif rtype == 'visit' and rid %}
+            <a href="/visit/{{ rid }}" style="color:var(--brand-teal);text-decoration:none;">{{ rid }}</a>
+          {% else %}
+            {{ rid or '—' }}
+          {% endif %}
+        </td>
+        <td style="padding:10px 16px;color:var(--text-muted);font-family:monospace;font-size:12px;">{{ ip or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:80px;color:var(--text-muted);">
+  <div style="font-size:48px;margin-bottom:16px;">📋</div>
+  <h3 style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:8px;color:var(--text-secondary);">No audit entries yet</h3>
+  <p style="font-size:14px;">Activity will be logged here as staff interact with patient and visit records.</p>
+</div>
+{% endif %}
+{% endblock %}

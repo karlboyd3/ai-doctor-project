@@ -156,17 +156,25 @@
     <h1>Patient Profiles</h1>
     <p>Persistent patient history, allergies, and medications</p>
   </div>
-  <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('open')"
-          style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);backdrop-filter:blur(4px);">
-    + Add Patient
-  </button>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <input id="patientSearch" type="text" placeholder="Search patients…"
+           oninput="filterPatients(this.value)"
+           style="padding:9px 16px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;min-width:200px;"
+           onfocus="this.style.background='rgba(255,255,255,0.25)'"
+           onblur="this.style.background='rgba(255,255,255,0.15)'">
+    <button class="btn btn-primary" onclick="document.getElementById('addModal').classList.add('open')"
+            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);backdrop-filter:blur(4px);white-space:nowrap;">
+      + Add Patient
+    </button>
+  </div>
 </div>
+<div id="searchEmpty" style="display:none;text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No patients match your search.</div>
 
 {% if patients %}
 <div class="patient-grid">
   {% for p in patients %}
   {# p: patient_id, first_name, last_name, dob, sex, phone, email, address, pin, allergies, current_medications, notes, preferred_language, suffix #}
-  <a href="/patient/{{ p[0] }}" class="patient-card">
+  <a href="/patient/{{ p[0] }}" class="patient-card" data-search="{{ (p[1]~' '~p[2]~' '~(p[13] or '')~' '~(p[5] or '')~' '~(p[6] or ''))|lower }}">
     <div class="patient-avatar">{{ p[1][0].upper() if p[1] else '?' }}</div>
     <div class="patient-name">{{ p[1] or '' }} {{ p[2] or '' }}{% if p[13] %} {{ p[13] }}{% endif %}</div>
     <div class="patient-meta">
@@ -255,5 +263,17 @@
 document.getElementById('addModal').addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('open');
 });
+
+function filterPatients(q) {
+  const term  = q.toLowerCase().trim();
+  const cards = document.querySelectorAll('.patient-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const match = !term || c.dataset.search.includes(term);
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('searchEmpty').style.display = visible === 0 && term ? 'block' : 'none';
+}
 </script>
 {% endblock %}
