@@ -13,6 +13,6 @@ def get_cursor():
         catalog='iceberg_data',
         schema='healthcare',
         protocol='https',
-        requests_kwargs={'verify': True}
+        requests_kwargs={'verify': False}
     )
     return conn.cursor()
