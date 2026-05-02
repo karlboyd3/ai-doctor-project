@@ -242,7 +242,8 @@ def run_pipeline_api():
     visit_id = (request.json or {}).get("visit_id") or request.form.get("visit_id", "")
     visit_id = visit_id.strip()
     try:
-        cmd = [os.path.join(os.path.dirname(__file__), "venv", "Scripts", "python.exe"), "pipeline.py"]
+        import sys
+        cmd = [sys.executable, "pipeline.py"]
         if visit_id:
             cmd.append(visit_id)
         result = subprocess.run(
@@ -358,11 +359,11 @@ def generate_paperwork(visit_id):
     if not doc_types:
         return jsonify({"success": False, "error": "No document types specified."})
     doc_types_arg = ",".join(doc_types)
-    python_exe = os.path.join(os.path.dirname(__file__), "venv", "Scripts", "python.exe")
+    import sys
     log_path = os.path.join(os.path.dirname(__file__), "paperwork.log")
     log_file = open(log_path, "w")
     subprocess.Popen(
-        [python_exe, "paperwork.py", safe_sql(visit_id), doc_types_arg],
+        [sys.executable, "paperwork.py", safe_sql(visit_id), doc_types_arg],
         stdout=log_file,
         stderr=log_file,
         cwd=os.path.dirname(__file__)
@@ -465,9 +466,8 @@ def transcribe_api():
             print(f"Visit {visit_id} auto-linked to patient {patient_id_link}")
 
         # Auto-run pipeline in background for this specific visit
-        python_exe = os.path.join(os.path.dirname(__file__), "venv", "Scripts", "python.exe")
         subprocess.Popen(
-            [python_exe, "pipeline.py", visit_id],
+            [sys.executable, "pipeline.py", visit_id],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
